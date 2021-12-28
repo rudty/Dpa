@@ -5,10 +5,10 @@ using System.Threading.Tasks;
 
 namespace Dpa.Repository.Implements
 {
-    class DefaultCrudRepository<T, ID> : ICrudRepository<T, ID>
+    internal class DefaultCrudRepository<T, ID> : ICrudRepository<T, ID>
     {
-        private readonly DbConnection connection;
-        private readonly IRepositoryQuery<T, ID> repositoryQuery;
+        protected readonly DbConnection connection;
+        protected readonly IRepositoryQuery<T, ID> repositoryQuery;
 
         internal DefaultCrudRepository(DbConnection connection, IRepositoryQuery<T, ID> repositoryQuery)
         {
@@ -35,76 +35,49 @@ namespace Dpa.Repository.Implements
 
         Task<int> ICrudRepository<T, ID>.Insert(T value)
         {
-            return ExecuteInternal(repositoryQuery.Insert, value, null);
+            return ExecuteInternal(repositoryQuery.Insert, value);
         }
 
         Task<int> ICrudRepository<T, ID>.Insert(IEnumerable<T> values)
         {
-            return ExecuteTransaction(repositoryQuery.Insert, values);
+            return ExecuteInternal(repositoryQuery.Insert, values);
         }
 
         Task<int> ICrudRepository<T, ID>.Update(T value)
         {
-            return ExecuteInternal(repositoryQuery.Update, value, null);
+            return ExecuteInternal(repositoryQuery.Update, value);
         }
 
         Task<int> ICrudRepository<T, ID>.Update(IEnumerable<T> values)
         {
-            return ExecuteTransaction(repositoryQuery.Update, values);
+            return ExecuteInternal(repositoryQuery.Update, values);
         }
 
         Task<int> ICrudRepository<T, ID>.Delete(ID id)
         {
-            return ExecuteInternal(repositoryQuery.Delete, id, null);
+            return ExecuteInternal(repositoryQuery.Delete, id);
         }
 
         Task<int> ICrudRepository<T, ID>.Delete(IEnumerable<ID> values)
         {
-            return ExecuteTransaction(repositoryQuery.Delete, values);
+            return ExecuteInternal(repositoryQuery.Delete, values);
         }
 
-        private async Task<int> ExecuteInternal<E>(QueryAndParameter<E> queryAndParameter, E value, DbTransaction transaction)
+        private async Task<int> ExecuteInternal<E>(QueryAndParameter<E> queryAndParameter, E value)
         {
             return await Dapper.SqlMapper.ExecuteAsync(
                         connection,
                         sql: queryAndParameter.query,
-                        param: queryAndParameter.parameterBinder(value),
-                        transaction: transaction).ConfigureAwait(false);
+                        param: queryAndParameter.parameterBinder(value)).ConfigureAwait(false);
         }
 
 
-        private async Task<int> ExecuteTransaction<E>(QueryAndParameter<E> queryAndParameter, IEnumerable<E> values)
+        private async Task<int> ExecuteInternal<E>(QueryAndParameter<E> queryAndParameter, IEnumerable<E> values)
         {
-            int totalRowsAffected = 0;
-            DbTransaction transaction = connection.BeginTransaction();
-            try
-            {
-                foreach (E value in values)
-                {
-                    
-                    int rowsAffected = await ExecuteInternal(queryAndParameter, value, transaction);
-                    totalRowsAffected += rowsAffected;
-                }
-
-                transaction.Commit();
-            }
-            catch
-            {
-                transaction.Rollback();
-                throw;
-            }
-            finally
-            {
-                try
-                {
-                    await transaction.DisposeAsync();
-                }
-                catch
-                {
-                }
-            }
-
-            return totalRowsAffected;
-        }
+            return await Dapper.SqlMapper.ExecuteAsync(
+                  connection,
+                  sql: queryAndParameter.query,
+                  param: values.Select(queryAndParameter.parameterBinder)).ConfigureAwait(false);
+         }
     }
 }
