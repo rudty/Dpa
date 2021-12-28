@@ -1,5 +1,7 @@
 ﻿using Dpa.Repository.Implements;
+using System;
 using System.Data.Common;
+using System.Reflection;
 using System.Threading.Tasks;
 
 namespace Dpa.Repository
@@ -27,7 +29,9 @@ namespace Dpa.Repository
         /// <param name="dbConnection">연결</param>
         public static Task<IStoreProcedureCrudRepository<T, ID>> SqlServerStoreProcedure<T, ID>(DbConnection dbConnection)
         {
-            IStoreProcedureCrudRepository<T, ID> instance = new StoreProcedureCrudRepository<T, ID>(dbConnection, new StoreProcedureRepositoryQuery<T, ID>());
+            IStoreProcedureCrudRepository<T, ID> instance = new DefaultCrudRepository<T, ID>(
+                dbConnection, 
+                new StoreProcedureRepositoryQuery<T, ID>());
             return Task.FromResult(instance);
         }
     }

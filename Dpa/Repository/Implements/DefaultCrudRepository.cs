@@ -6,27 +6,43 @@ using System.Threading.Tasks;
 
 namespace Dpa.Repository.Implements
 {
-    internal class DefaultCrudRepository<T, ID> : ICrudRepository<T, ID>
+    internal class DefaultCrudRepository<T, ID> : IStoreProcedureCrudRepository<T, ID>
     {
-        private readonly CommandType commandType;
         protected readonly DbConnection connection;
         protected readonly IRepositoryQuery<T, ID> repositoryQuery;
 
-        internal DefaultCrudRepository(DbConnection connection, IRepositoryQuery<T, ID> repositoryQuery, CommandType commandType = CommandType.Text)
+        internal DefaultCrudRepository(DbConnection connection, IRepositoryQuery<T, ID> repositoryQuery)
         {
             this.connection = connection;
             this.repositoryQuery = repositoryQuery;
-            this.commandType = commandType;
+        }
+
+        Task IStoreProcedureCrudRepository<T, ID>.EnsureStoreProcedure()
+        {
+            StoreProcedureRepositoryQuery<T, ID> q = repositoryQuery as StoreProcedureRepositoryQuery<T, ID>;
+            if (repositoryQuery is null)
+            {
+                return Task.CompletedTask;
+            }
+            return q.EnsureStoreProcedure(connection);
         }
 
         Task<T> ICrudRepository<T, ID>.SelectFirst(ID id)
         {
-            return Dapper.SqlMapper.QueryFirstAsync<T>(connection, repositoryQuery.Select.query, repositoryQuery.Select.parameterBinder(id), commandType: commandType);
+            return Dapper.SqlMapper.QueryFirstAsync<T>(
+                connection, 
+                repositoryQuery.Select.query, 
+                repositoryQuery.Select.parameterBinder(id), 
+                commandType: repositoryQuery.CommandType);
         }
 
         async Task<IReadOnlyCollection<T>> ICrudRepository<T, ID>.Select(ID id)
         {
-            IEnumerable<T> r = await Dapper.SqlMapper.QueryAsync<T>(connection, repositoryQuery.Select.query, repositoryQuery.Select.parameterBinder(id), commandType: commandType).ConfigureAwait(false);
+            IEnumerable<T> r = await Dapper.SqlMapper.QueryAsync<T>(
+                connection, 
+                repositoryQuery.Select.query, 
+                repositoryQuery.Select.parameterBinder(id), 
+                commandType: repositoryQuery.CommandType).ConfigureAwait(false);
 
             if (r is IReadOnlyCollection<T> c)
             {
@@ -72,7 +88,7 @@ namespace Dpa.Repository.Implements
                         connection,
                         sql: queryAndParameter.query,
                         param: queryAndParameter.parameterBinder(value), 
-                        commandType: commandType).ConfigureAwait(false);
+                        commandType: repositoryQuery.CommandType).ConfigureAwait(false);
         }
 
 
@@ -82,7 +98,7 @@ namespace Dpa.Repository.Implements
                   connection,
                   sql: queryAndParameter.query,
                   param: values.Select(queryAndParameter.parameterBinder),
-                  commandType: commandType).ConfigureAwait(false);
+                  commandType: repositoryQuery.CommandType).ConfigureAwait(false);
          }
     }
 }

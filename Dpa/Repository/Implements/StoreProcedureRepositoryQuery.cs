@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Data.Common;
 using System.Linq;
 using System.Text;
@@ -16,6 +17,8 @@ namespace Dpa.Repository.Implements
         public QueryAndParameter<T> Update { get; }
 
         public QueryAndParameter<ID> Delete { get; }
+
+        CommandType IRepositoryQuery<T, ID>.CommandType => CommandType.StoredProcedure;
 
         internal StoreProcedureRepositoryQuery()
         {

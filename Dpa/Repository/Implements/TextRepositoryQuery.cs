@@ -1,9 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.CompilerServices;
+using System.Data;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace Dpa.Repository.Implements
 {
@@ -16,6 +15,8 @@ namespace Dpa.Repository.Implements
         public QueryAndParameter<T> Update { get; }
 
         public QueryAndParameter<ID> Delete { get; }
+
+        CommandType IRepositoryQuery<T, ID>.CommandType => CommandType.Text;
 
         public TextRepositoryQuery()
         {

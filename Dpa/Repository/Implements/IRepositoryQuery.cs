@@ -1,5 +1,6 @@
 ﻿
 using System;
+using System.Data;
 
 namespace Dpa.Repository.Implements
 {
@@ -9,6 +10,7 @@ namespace Dpa.Repository.Implements
         QueryAndParameter<T> Insert { get; }
         QueryAndParameter<T> Update { get; }
         QueryAndParameter<ID> Delete { get; }
+        CommandType CommandType { get; }
 
         public static Func<ID, object> GetDefaultIdQueryParameterBinder()
         {
