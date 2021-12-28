@@ -20,25 +20,16 @@ namespace Dpa.Repository.Implements
         public TextRepositoryQuery()
         {
             RepositoryPropertyNameInfo propertyNameInfo = ReflectUtils.GetRepositoryPropertyInfo(typeof(T));
-            string tableName = ReflectUtils.GetTableName(typeof(T));
             string columns = string.Join(',', propertyNameInfo.PropertyNames);
             string cond = GetCond(propertyNameInfo.PrimaryKeyPropertyNames);
 
-            Func<ID, object> idParamBinder;
-            Type idType = typeof(ID);
-            if (idType.IsPrimitive || idType == typeof(string))
-            {
-                idParamBinder = DefaultIdQueryParameterBinder;
-            }
-            else
-            {
-                idParamBinder = DefaultEntityQueryParameterBinder;
-            }
+            Func<ID, object> idBinder = IRepositoryQuery<T, ID>.GetDefaultIdQueryParameterBinder();
+            Func<T, object> entityBinder = IRepositoryQuery<T, ID>.GetDefaultEntityQueryParameterBinder();
 
-            Select = new QueryAndParameter<ID>(GetSelectQuery(columns, tableName, cond), idParamBinder);
-            Insert = new QueryAndParameter<T>(GetInsertQuery(columns, tableName, propertyNameInfo.PropertyNames), DefaultEntityQueryParameterBinder);
-            Update = new QueryAndParameter<T>(GetUpdateQuery(tableName, propertyNameInfo.PropertyNames, propertyNameInfo.PrimaryKeyPropertyNames), DefaultEntityQueryParameterBinder);
-            Delete = new QueryAndParameter<ID>(GetDeleteQuery(tableName, cond), idParamBinder);
+            Select = new QueryAndParameter<ID>(GetSelectQuery(columns, propertyNameInfo.TableName, cond), idBinder);
+            Insert = new QueryAndParameter<T>(GetInsertQuery(columns, propertyNameInfo.TableName, propertyNameInfo.PropertyNames), entityBinder);
+            Update = new QueryAndParameter<T>(GetUpdateQuery(propertyNameInfo.TableName, propertyNameInfo.PropertyNames, propertyNameInfo.PrimaryKeyPropertyNames), entityBinder);
+            Delete = new QueryAndParameter<ID>(GetDeleteQuery(propertyNameInfo.TableName, cond), idBinder);
         }
 
         private static string GetCond(List<string> primaryKeyPropertyName)
@@ -84,16 +75,6 @@ namespace Dpa.Repository.Implements
         private static string GetSelectQuery(string columns, string tableName, string cond)
         {
             return $"select {columns} from {tableName} {cond};";
-        }
-
-        private static object DefaultIdQueryParameterBinder<E>(E id)
-        {
-            return new { id };
-        }
-
-        private static object DefaultEntityQueryParameterBinder<E>(E value)
-        {
-            return value;
-        }
+        } 
     }
 }

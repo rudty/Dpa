@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Data;
 using System.Data.Common;
 using System.Linq;
 using System.Threading.Tasks;
@@ -7,23 +8,25 @@ namespace Dpa.Repository.Implements
 {
     internal class DefaultCrudRepository<T, ID> : ICrudRepository<T, ID>
     {
+        private readonly CommandType commandType;
         protected readonly DbConnection connection;
         protected readonly IRepositoryQuery<T, ID> repositoryQuery;
 
-        internal DefaultCrudRepository(DbConnection connection, IRepositoryQuery<T, ID> repositoryQuery)
+        internal DefaultCrudRepository(DbConnection connection, IRepositoryQuery<T, ID> repositoryQuery, CommandType commandType = CommandType.Text)
         {
             this.connection = connection;
             this.repositoryQuery = repositoryQuery;
+            this.commandType = commandType;
         }
 
         Task<T> ICrudRepository<T, ID>.SelectFirst(ID id)
         {
-            return Dapper.SqlMapper.QueryFirstAsync<T>(connection, repositoryQuery.Select.query, repositoryQuery.Select.parameterBinder(id));
+            return Dapper.SqlMapper.QueryFirstAsync<T>(connection, repositoryQuery.Select.query, repositoryQuery.Select.parameterBinder(id), commandType: commandType);
         }
 
         async Task<IReadOnlyCollection<T>> ICrudRepository<T, ID>.Select(ID id)
         {
-            IEnumerable<T> r = await Dapper.SqlMapper.QueryAsync<T>(connection, repositoryQuery.Select.query, repositoryQuery.Select.parameterBinder(id)).ConfigureAwait(false);
+            IEnumerable<T> r = await Dapper.SqlMapper.QueryAsync<T>(connection, repositoryQuery.Select.query, repositoryQuery.Select.parameterBinder(id), commandType: commandType).ConfigureAwait(false);
 
             if (r is IReadOnlyCollection<T> c)
             {
@@ -68,7 +71,8 @@ namespace Dpa.Repository.Implements
             return await Dapper.SqlMapper.ExecuteAsync(
                         connection,
                         sql: queryAndParameter.query,
-                        param: queryAndParameter.parameterBinder(value)).ConfigureAwait(false);
+                        param: queryAndParameter.parameterBinder(value), 
+                        commandType: commandType).ConfigureAwait(false);
         }
 
 
@@ -77,7 +81,8 @@ namespace Dpa.Repository.Implements
             return await Dapper.SqlMapper.ExecuteAsync(
                   connection,
                   sql: queryAndParameter.query,
-                  param: values.Select(queryAndParameter.parameterBinder)).ConfigureAwait(false);
+                  param: values.Select(queryAndParameter.parameterBinder),
+                  commandType: commandType).ConfigureAwait(false);
          }
     }
 }

@@ -9,12 +9,15 @@ namespace Dpa.Repository
 {
     internal readonly struct RepositoryPropertyNameInfo
     {
+        public readonly string TableName;
+
         public readonly List<string> PrimaryKeyPropertyNames;
 
         public readonly List<string> PropertyNames;
 
-        public RepositoryPropertyNameInfo(List<string> primaryKeyPropertyName, List<string> propertyNames)
+        public RepositoryPropertyNameInfo(string tableName, List<string> primaryKeyPropertyName, List<string> propertyNames)
         {
+            TableName = tableName;
             PrimaryKeyPropertyNames = primaryKeyPropertyName;
             PropertyNames = propertyNames;
         }
@@ -43,7 +46,8 @@ namespace Dpa.Repository
                 throw new Exception("cannot found primarykey in " + objectType.FullName);
             }
 
-            return new RepositoryPropertyNameInfo(primaryKeyPropertyNames, propertyNames);
+            string tableName = GetTableName(objectType);
+            return new RepositoryPropertyNameInfo(tableName, primaryKeyPropertyNames, propertyNames);
         }
 
         public static string GetFullName(Type type)
