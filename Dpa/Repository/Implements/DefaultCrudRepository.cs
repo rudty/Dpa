@@ -6,12 +6,12 @@ using System.Threading.Tasks;
 
 namespace Dpa.Repository.Implements
 {
-    internal class DefaultCrudRepository<T, ID> : IStoreProcedureCrudRepository<T, ID>
+    public class DefaultCrudRepository<T, ID> : IStoreProcedureCrudRepository<T, ID>
     {
         protected readonly DbConnection connection;
         protected readonly IRepositoryQuery<T, ID> repositoryQuery;
 
-        internal DefaultCrudRepository(DbConnection connection, IRepositoryQuery<T, ID> repositoryQuery)
+        public DefaultCrudRepository(DbConnection connection, IRepositoryQuery<T, ID> repositoryQuery)
         {
             this.connection = connection;
             this.repositoryQuery = repositoryQuery;
@@ -27,7 +27,7 @@ namespace Dpa.Repository.Implements
             return q.EnsureStoreProcedure(connection);
         }
 
-        Task<T> ICrudRepository<T, ID>.SelectFirst(ID id)
+        Task<T> ICrudRepository<T, ID>.SelectRow(ID id)
         {
             return Dapper.SqlMapper.QueryFirstAsync<T>(
                 connection, 
@@ -52,7 +52,7 @@ namespace Dpa.Repository.Implements
             return r.ToList();
         }
 
-        Task<int> ICrudRepository<T, ID>.Insert(T value)
+        Task<int> ICrudRepository<T, ID>.InsertRow(T value)
         {
             return ExecuteInternal(repositoryQuery.Insert, value);
         }
@@ -62,7 +62,7 @@ namespace Dpa.Repository.Implements
             return ExecuteInternal(repositoryQuery.Insert, values);
         }
 
-        Task<int> ICrudRepository<T, ID>.Update(T value)
+        Task<int> ICrudRepository<T, ID>.UpdateRow(T value)
         {
             return ExecuteInternal(repositoryQuery.Update, value);
         }
@@ -72,7 +72,7 @@ namespace Dpa.Repository.Implements
             return ExecuteInternal(repositoryQuery.Update, values);
         }
 
-        Task<int> ICrudRepository<T, ID>.Delete(ID id)
+        Task<int> ICrudRepository<T, ID>.DeleteRow(ID id)
         {
             return ExecuteInternal(repositoryQuery.Delete, id);
         }

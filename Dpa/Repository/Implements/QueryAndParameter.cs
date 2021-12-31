@@ -4,7 +4,7 @@ using System.Text;
 
 namespace Dpa.Repository.Implements
 {
-    readonly struct QueryAndParameter<E>
+    public readonly struct QueryAndParameter<E>
     {
         /// <summary>
         /// sql query

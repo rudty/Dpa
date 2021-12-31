@@ -6,7 +6,7 @@ using System.Linq;
 namespace Test.Entity
 {
     [System.ComponentModel.DataAnnotations.Schema.Table(TableName)]
-    class TestIntKeyEntity
+    public class TestIntKeyEntity
     {
         public  const string TableName = "inttable";
 

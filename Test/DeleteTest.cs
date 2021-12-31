@@ -45,7 +45,7 @@ namespace Test
         public async Task Delete1IntTest()
         {
             ICrudRepository<TestIntKeyEntity, int> repository = await RepositoryGenerator.Default<TestIntKeyEntity, int>(connection);
-            int affectedRows = await repository.Delete(1);
+            int affectedRows = await repository.DeleteRow(1);
             Assert.Equal(1, affectedRows);
 
             List<TestIntKeyEntity> r = TestIntKeyEntity.SelectEntity(connection, 1);
@@ -68,7 +68,7 @@ namespace Test
         public async Task Delete1StringTest()
         {
             ICrudRepository<TestStringKeyEntity, string> repository = await RepositoryGenerator.Default<TestStringKeyEntity, string>(connection);
-            int affectedRows = await repository.Delete("a");
+            int affectedRows = await repository.DeleteRow("a");
             Assert.Equal(1, affectedRows);
 
             List<TestStringKeyEntity> r = TestStringKeyEntity.SelectEntity(connection, "a");

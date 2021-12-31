@@ -16,7 +16,7 @@ namespace Dpa.Repository
         /// </summary>
         /// <param name="id">아이디</param>
         /// <returns>row를 매핑</returns>
-        Task<T> SelectFirst(ID id);
+        Task<T> SelectRow(ID id);
 
         /// <summary>
         /// id를 찾고 모두 가져옵니다
@@ -30,7 +30,7 @@ namespace Dpa.Repository
         /// </summary>
         /// <param name="value">넣을 값</param>
         /// <returns>rows affected</returns>
-        Task<int> Insert(T value);
+        Task<int> InsertRow(T value);
 
         /// <summary>
         /// entity 여러개를 넣습니다
@@ -44,7 +44,7 @@ namespace Dpa.Repository
         /// </summary>
         /// <param name="value">수정하는 값</param>
         /// <returns>rows affected</returns>
-        Task<int> Update(T value);
+        Task<int> UpdateRow(T value);
 
         /// <summary>
         /// entity를 수정합니다
@@ -58,7 +58,7 @@ namespace Dpa.Repository
         /// </summary>
         /// <param name="value">삭제하는 값</param>
         /// <returns>rows affected</returns>
-        Task<int> Delete(ID value);
+        Task<int> DeleteRow(ID value);
 
         /// <summary>
         /// entity를 삭제합니다

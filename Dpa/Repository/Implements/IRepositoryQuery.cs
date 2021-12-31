@@ -4,7 +4,7 @@ using System.Data;
 
 namespace Dpa.Repository.Implements
 {
-    internal interface IRepositoryQuery<T, ID>
+    public interface IRepositoryQuery<T, ID>
     {
         QueryAndParameter<ID> Select { get; }
         QueryAndParameter<T> Insert { get; }

@@ -44,7 +44,7 @@ namespace Test
             IStoreProcedureCrudRepository<TestIntKeyEntity, int> repository = await RepositoryGenerator.SqlServerStoreProcedure<TestIntKeyEntity, int>(connection);
             await repository.EnsureStoreProcedure();
 
-            var r = await repository.SelectFirst(1);
+            var r = await repository.SelectRow(1);
             Assert.Equal(r, new TestIntKeyEntity(1, "a"));
         }
 

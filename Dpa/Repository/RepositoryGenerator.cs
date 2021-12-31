@@ -1,7 +1,7 @@
 ﻿using Dpa.Repository.Implements;
+using Dpa.Repository.Implements.Runtime;
 using System;
 using System.Data.Common;
-using System.Reflection;
 using System.Threading.Tasks;
 
 namespace Dpa.Repository
@@ -34,5 +34,18 @@ namespace Dpa.Repository
                 new StoreProcedureRepositoryQuery<T, ID>());
             return Task.FromResult(instance);
         }
+
+        /// <summary>
+        /// 직접 구현한 interface로 사용 가능합니다 
+        /// </summary>
+        /// <typeparam name="Repo">Repository interface 구현</typeparam>
+        /// <param name="dbConnection">연결</param>
+        public static Task<Repo> Custom<Repo>(DbConnection dbConnection)
+        {
+            Type customType = CustomCrudRepository<object, object>.Generate(typeof(Repo));
+            Repo instance = (Repo)Activator.CreateInstance(customType, dbConnection, null);
+            return Task.FromResult(instance);
+        }
     }
 }
+

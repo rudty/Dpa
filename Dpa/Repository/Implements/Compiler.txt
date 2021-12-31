@@ -1,0 +1,39 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
+using System.Threading.Tasks;
+using Microsoft.CodeAnalysis.CSharp.Scripting;
+using Microsoft.CodeAnalysis.Scripting;
+
+namespace Dpa.Repository.Implements
+{
+    internal class RuntimeScriptCompiler
+    {
+        private static Assembly[] dotnetDllPath = new[] {
+            typeof(object).GetTypeInfo().Assembly,
+            typeof(RuntimeScriptCompiler).GetTypeInfo().Assembly,
+        };
+
+        private HashSet<Assembly> runtimeDllPath = new HashSet<Assembly>(dotnetDllPath);
+
+        public void AddReference(Type t)
+        {
+            runtimeDllPath.Add(t.Assembly);
+        }
+
+        public async Task<object> Compile(string code)
+        {
+            try
+            {
+                ScriptOptions options = ScriptOptions.Default.WithReferences(runtimeDllPath.ToArray());
+                return await CSharpScript.EvaluateAsync(code, options);
+            }
+            catch (CompilationErrorException e)
+            {
+                Console.WriteLine(string.Join(Environment.NewLine, e.Diagnostics));
+                throw;
+            }
+        }
+    }
+}

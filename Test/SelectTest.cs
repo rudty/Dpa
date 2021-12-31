@@ -45,13 +45,13 @@ namespace Test
         public async Task SelectFirstIntTest()
         {
             ICrudRepository<TestIntKeyEntity, int> repository = await RepositoryGenerator.Default<TestIntKeyEntity, int>(connection);
-            TestIntKeyEntity r1 = await repository.SelectFirst(1);
+            TestIntKeyEntity r1 = await repository.SelectRow(1);
             Assert.Equal(r1, new TestIntKeyEntity(1, "a"));
 
-            TestIntKeyEntity r2 = await repository.SelectFirst(2);
+            TestIntKeyEntity r2 = await repository.SelectRow(2);
             Assert.Equal(r2, new TestIntKeyEntity(2, "b"));
 
-            TestIntKeyEntity r3 = await repository.SelectFirst(3);
+            TestIntKeyEntity r3 = await repository.SelectRow(3);
             Assert.Equal(r3, new TestIntKeyEntity(3, "c"));
         }
 
@@ -59,13 +59,13 @@ namespace Test
         public async Task SelectFirstStringTest()
         {
             ICrudRepository<TestStringKeyEntity, string> repository = await RepositoryGenerator.Default<TestStringKeyEntity, string>(connection);
-            TestStringKeyEntity r1 = await repository.SelectFirst("a");
+            TestStringKeyEntity r1 = await repository.SelectRow("a");
             Assert.Equal(r1, new TestStringKeyEntity("a", 1));
 
-            TestStringKeyEntity r2 = await repository.SelectFirst("b");
+            TestStringKeyEntity r2 = await repository.SelectRow("b");
             Assert.Equal(r2, new TestStringKeyEntity("b", 2));
 
-            TestStringKeyEntity r3 = await repository.SelectFirst("c");
+            TestStringKeyEntity r3 = await repository.SelectRow("c");
             Assert.Equal(r3, new TestStringKeyEntity("c", 3));
         }
 

@@ -7,7 +7,7 @@ using System.Text;
 namespace Test.Entity
 {
     [System.ComponentModel.DataAnnotations.Schema.Table(TableName)]
-    class TestStringKeyEntity
+    public class TestStringKeyEntity
     {
         public const string TableName = "stringtable";
 

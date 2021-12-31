@@ -90,7 +90,7 @@ namespace Dpa.Repository
                 return typeName;
             }
 
-            return new StringBuilder(name);
+            return new StringBuilder(name).Replace('+', '.');
         }
     }
 }

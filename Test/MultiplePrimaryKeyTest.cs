@@ -39,7 +39,7 @@ namespace Test
         public async Task Foo()
         {
             ICrudRepository<MultiPkEntity, MultiPk> repository = await RepositoryGenerator.Default<MultiPkEntity, MultiPk> (connection);
-            var r = await repository.SelectFirst(new MultiPk(1, "a"));
+            var r = await repository.SelectRow(new MultiPk(1, "a"));
             Assert.Equal(r, new MultiPkEntity(1, "a", "a"));
         }
     }

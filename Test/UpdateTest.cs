@@ -46,7 +46,7 @@ namespace Test
         {
             ICrudRepository<TestIntKeyEntity, int> repository = await RepositoryGenerator.Default<TestIntKeyEntity, int>(connection);
             TestIntKeyEntity updateRow = new TestIntKeyEntity(1, "q");
-            int affectedRows = await repository.Update(updateRow);
+            int affectedRows = await repository.UpdateRow(updateRow);
             Assert.Equal(1, affectedRows);
 
             TestIntKeyEntity r = TestIntKeyEntity.SelectEntityFirst(connection, 1);
@@ -74,7 +74,7 @@ namespace Test
         {
             ICrudRepository<TestStringKeyEntity, string> repository = await RepositoryGenerator.Default<TestStringKeyEntity, string>(connection);
             TestStringKeyEntity updateRow = new TestStringKeyEntity("a", 9999);
-            int affectedRows = await repository.Update(updateRow);
+            int affectedRows = await repository.UpdateRow(updateRow);
             Assert.Equal(1, affectedRows);
 
             TestStringKeyEntity r = TestStringKeyEntity.SelectEntityFirst(connection, "a");
