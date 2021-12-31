@@ -13,7 +13,7 @@ namespace Dpa.Repository.Implements.Runtime
     {
         private static readonly AssemblyBuilder assemblyBuilder = AssemblyBuilder.DefineDynamicAssembly(new AssemblyName("repo_assembly"), AssemblyBuilderAccess.Run);
         private static readonly ModuleBuilder moduleBuilder = assemblyBuilder.DefineDynamicModule("repoModule");
-        private static readonly Dictionary<Type, Type> typeGenerateCache = new Dictionary<Type, Type>();
+        private static readonly Dictionary<(Type, Type), Type> typeGenerateCache = new Dictionary<(Type, Type), Type>();
         private static readonly object typeCacheLock = new object();
         private static int generateCount = 0;
 
@@ -22,7 +22,7 @@ namespace Dpa.Repository.Implements.Runtime
             Type buildType;
             lock (typeCacheLock)
             {
-                if (typeGenerateCache.TryGetValue(generateInterface, out buildType))
+                if (typeGenerateCache.TryGetValue((baseType, generateInterface), out buildType))
                 {
                     return buildType;
                 }
@@ -42,7 +42,7 @@ namespace Dpa.Repository.Implements.Runtime
 
             lock (typeCacheLock)
             {
-                typeGenerateCache.TryAdd(generateInterface, buildType);
+                typeGenerateCache.TryAdd((baseType, generateInterface), buildType);
             }
 
             return buildType;
