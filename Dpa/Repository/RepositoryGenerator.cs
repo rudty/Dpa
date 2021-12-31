@@ -42,8 +42,20 @@ namespace Dpa.Repository
         /// <param name="dbConnection">연결</param>
         public static Task<Repo> Custom<Repo>(DbConnection dbConnection)
         {
-            Type customType = CustomCrudRepository<object, object>.Generate(typeof(Repo));
-            Repo instance = (Repo)Activator.CreateInstance(customType, dbConnection, null);
+            Type customType = RuntimeRepositoryGenerator.Generate(typeof(BaseRepository), typeof(Repo));
+            Repo instance = (Repo)Activator.CreateInstance(customType, dbConnection);
+            return Task.FromResult(instance);
+        }
+
+        /// <summary>
+        /// 직접 구현한 interface + crud repository로 사용 가능합니다 
+        /// </summary>
+        /// <typeparam name="Repo">Repository interface 구현</typeparam>
+        /// <param name="dbConnection">연결</param>
+        public static Task<Repo> CustomCrud<Repo, T, ID>(DbConnection dbConnection)
+        {
+            Type customType = RuntimeRepositoryGenerator.Generate(typeof(DefaultCrudRepository<T, ID>), typeof(Repo));
+            Repo instance = (Repo)Activator.CreateInstance(customType, dbConnection, new TextRepositoryQuery<T, ID>());
             return Task.FromResult(instance);
         }
     }

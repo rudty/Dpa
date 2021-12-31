@@ -7,10 +7,9 @@ using System.Reflection;
 using System.Reflection.Emit;
 using System.Threading;
 using System.Threading.Tasks;
-
 namespace Dpa.Repository.Implements.Runtime
 {
-    public class CustomCrudRepository<T, ID> : DefaultCrudRepository<T, ID>
+    public class RuntimeRepositoryGenerator
     {
         private static readonly AssemblyBuilder assemblyBuilder = AssemblyBuilder.DefineDynamicAssembly(new AssemblyName("repo_assembly"), AssemblyBuilderAccess.Run);
         private static readonly ModuleBuilder moduleBuilder = assemblyBuilder.DefineDynamicModule("repoModule");
@@ -18,11 +17,7 @@ namespace Dpa.Repository.Implements.Runtime
         private static readonly object typeCacheLock = new object();
         private static int generateCount = 0;
 
-        public CustomCrudRepository(DbConnection connection, IRepositoryQuery<T, ID> repositoryQuery) : base(connection, repositoryQuery)
-        {
-        }
-
-        public static Type Generate(Type generateInterface)
+        public static Type Generate(Type baseType, Type generateInterface)
         {
             Type buildType;
             lock (typeCacheLock)
@@ -34,10 +29,9 @@ namespace Dpa.Repository.Implements.Runtime
             }
 
             int gen = Interlocked.Increment(ref generateCount);
-            Type baseType = typeof(CustomCrudRepository<T, ID>);
 
             TypeBuilder typeBuilder = moduleBuilder.DefineType(
-                  "CustomRepository_generate" + gen,
+                  "Custom_generate" + gen,
                   TypeAttributes.Public | TypeAttributes.Class,
                   parent: baseType,
                   interfaces: new Type[] { generateInterface });
@@ -54,19 +48,22 @@ namespace Dpa.Repository.Implements.Runtime
             return buildType;
         }
 
+
         /// <summary>
-        /// call base(this, arg1, arg2);
+        /// call base(this, arg1, ...);
         /// </summary>
         private static void GenerateConstructor(TypeBuilder typeBuilder, Type baseType)
         {
-            Type[] ctorParams = new Type[] { typeof(DbConnection), typeof(IRepositoryQuery<T, ID>) };
+            ConstructorInfo baseCtor = baseType.GetConstructors()[0];
+            Type[] ctorParams = baseCtor.GetParameters().Select(e => e.ParameterType).ToArray();
             ConstructorBuilder ctorBuilder = typeBuilder.DefineConstructor(MethodAttributes.Public, CallingConventions.Standard, ctorParams);
-            ConstructorInfo baseCtor = baseType.GetConstructor(ctorParams);
             ILGenerator il = ctorBuilder.GetILGenerator();
 
             il.Emit(OpCodes.Ldarg_0);
-            il.Emit(OpCodes.Ldarg_1);
-            il.Emit(OpCodes.Ldarg_2);
+            for (int i = 0; i < ctorParams.Length; ++i)
+            {
+                il.Emit(OpCodes.Ldarg, i + 1);
+            }
             il.Emit(OpCodes.Call, baseCtor);
             il.Emit(OpCodes.Ret);
         }
@@ -79,13 +76,15 @@ namespace Dpa.Repository.Implements.Runtime
             Type dictionaryType = typeof(Dictionary<string, object>);
             ConstructorInfo dictionaryCtor = dictionaryType.GetConstructor(new Type[0]);
             MethodInfo dictionaryAddMethod = dictionaryType.GetMethod("Add");
+            FieldInfo connectionField = baseType.GetField("connection", BindingFlags.NonPublic | BindingFlags.Instance);
+            Type myType = typeof(RuntimeRepositoryGenerator);
 
             foreach (var method in interfaceType.GetMethods())
             {
                 Type[] methodParamTypes = method.GetParameters().Select(e => e.ParameterType).ToArray();
                 Type methodReturnType = method.ReturnType;
                 QueryAttribute queryAttribute = method.GetCustomAttribute<QueryAttribute>();
-                
+
                 string sqlQuery;
                 CommandType commandType;
                 if (queryAttribute is null)
@@ -134,7 +133,7 @@ namespace Dpa.Repository.Implements.Runtime
                 MethodInfo callMethod;
                 if (methodReturnType == typeof(Task))
                 {
-                    callMethod = baseType.GetMethod("DapperExecute", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+                    callMethod = myType.GetMethod("DapperExecute", BindingFlags.Public | BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Instance);
                 }
                 else
                 {
@@ -146,16 +145,19 @@ namespace Dpa.Repository.Implements.Runtime
                         {
                             throw new ArgumentException("must IEnumerable");
                         }
-                        callMethod = baseType.GetMethod("DapperQuery", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+                        callMethod = myType.GetMethod("DapperQuery", BindingFlags.Public | BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Instance)
+                            .MakeGenericMethod(firstGenericArgmentType);
                     }
                     else
                     {
-                        callMethod = baseType.GetMethod("DapperQueryFirst", BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+                        callMethod = myType.GetMethod("DapperQueryFirst", BindingFlags.Public | BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Instance)
+                            .MakeGenericMethod(taskReturnType);
                     }
                 }
 
                 //DapperExecute(this, sql, param, ommandType)
                 il.Emit(OpCodes.Ldarg_0);
+                il.Emit(OpCodes.Ldfld, connectionField);
                 il.Emit(OpCodes.Ldstr, sqlQuery);
                 il.Emit(OpCodes.Ldloc, localDictionary);
                 il.Emit(OpCodes.Ldc_I4, (int)commandType);
@@ -165,19 +167,19 @@ namespace Dpa.Repository.Implements.Runtime
             }
         }
 
-        public Task DapperExecute(string sql, object param, System.Data.CommandType commandType)
+        public static Task DapperExecute(DbConnection connection, string sql, object param, System.Data.CommandType commandType)
         {
             return Dapper.SqlMapper.ExecuteAsync(connection, sql, param, commandType: commandType);
         }
 
-        public Task<IEnumerable<T>> DapperQuery(string sql, object param, System.Data.CommandType commandType)
+        public static Task<IEnumerable<E>> DapperQuery<E>(DbConnection connection, string sql, object param, System.Data.CommandType commandType)
         {
-            return Dapper.SqlMapper.QueryAsync<T>(connection, sql, param, commandType: commandType);
+            return Dapper.SqlMapper.QueryAsync<E>(connection, sql, param, commandType: commandType);
         }
 
-        public Task<T> DapperQueryFirst(string sql, object param, System.Data.CommandType commandType)
+        public static Task<E> DapperQueryFirst<E>(DbConnection connection, string sql, object param, System.Data.CommandType commandType)
         {
-            return Dapper.SqlMapper.QueryFirstAsync<T>(connection, sql, param, commandType: commandType);
+            return Dapper.SqlMapper.QueryFirstAsync<E>(connection, sql, param, commandType: commandType);
         }
     }
 }
