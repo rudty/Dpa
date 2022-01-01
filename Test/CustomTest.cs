@@ -199,8 +199,8 @@ end";
                 cmd.ExecuteNonQuery();
             }
 
-            var update = new TestIntKeyEntity(13, "ZZZZ");
-            var repo = await RepositoryGenerator.Custom<IHello>(connection);
+            TestIntKeyEntity update = new TestIntKeyEntity(13, "ZZZZ");
+            IHello repo = await RepositoryGenerator.Custom<IHello>(connection);
             await repo.UpdateTestIntEntity(update);
 
             TestIntKeyEntity findEntity = TestIntKeyEntity.SelectEntityFirst(connection, 13);

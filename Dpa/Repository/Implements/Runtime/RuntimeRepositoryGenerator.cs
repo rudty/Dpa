@@ -132,7 +132,7 @@ namespace Dpa.Repository.Implements.Runtime
 
                 ILGenerator il = methodBuilder.GetILGenerator(256);
                 ParameterInfo[] parameters = method.GetParameters();
-                if (parameters.Length == 1 && parameters[0].ParameterType.IsClass && typeof(string) != parameters[0].ParameterType)
+                if (IsEntityParameter(parameters))
                 {
                     il.Emit(OpCodes.Ldarg_0);
                     il.Emit(OpCodes.Ldfld, connectionField);
@@ -180,6 +180,62 @@ namespace Dpa.Repository.Implements.Runtime
                     il.Emit(OpCodes.Ret);
                 }
             }
+        }
+
+        private static bool IsEntityParameter(ParameterInfo[] parameters)
+        {
+            if (parameters.Length != 1)
+            {
+                return false;
+            }
+
+            Type firstType = parameters[0].ParameterType;
+
+            if (firstType.IsValueType)
+            {
+                return false;
+            }
+
+            if (IsPrimitiveLike(firstType))
+            {
+                return false;
+            }
+            return true;
+        }
+
+        private static bool IsPrimitiveLike(Type t)
+        {
+            if (t.IsPrimitive)
+            {
+                return true;
+            }
+        
+            if (t == typeof(string))
+            {
+                return true;
+            }
+
+            if (t == typeof(DateTime))
+            {
+                return true;
+            }
+
+            if (t == typeof(TimeSpan))
+            {
+                return true;
+            }
+
+            if (t == typeof(System.Numerics.BigInteger))
+            {
+                return true;
+            }
+
+            if (t == typeof(decimal))
+            {
+                return true;
+            }
+
+            return false;
         }
 
         public static Task DapperExecute(DbConnection connection, string sql, object param, System.Data.CommandType commandType)
