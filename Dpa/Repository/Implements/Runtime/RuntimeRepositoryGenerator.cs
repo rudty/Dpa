@@ -14,6 +14,12 @@ namespace Dpa.Repository.Implements.Runtime
         private static readonly AssemblyBuilder assemblyBuilder = AssemblyBuilder.DefineDynamicAssembly(new AssemblyName("repo_assembly"), AssemblyBuilderAccess.Run);
         private static readonly ModuleBuilder moduleBuilder = assemblyBuilder.DefineDynamicModule("repoModule");
         private static readonly Dictionary<(Type, Type), Type> typeGenerateCache = new Dictionary<(Type, Type), Type>();
+
+        private static readonly Type dictionaryType = typeof(Dictionary<string, object>);
+        private static readonly ConstructorInfo dictionaryCtor = dictionaryType.GetConstructor(new Type[0]);
+        private static readonly MethodInfo dictionaryAddMethod = dictionaryType.GetMethod("Add");
+        private static readonly Type myType = typeof(RuntimeRepositoryGenerator);
+
         private static readonly object typeCacheLock = new object();
         private static int generateCount = 0;
 
@@ -73,11 +79,7 @@ namespace Dpa.Repository.Implements.Runtime
         /// </summary>
         public static void GenerateMethod(TypeBuilder typeBuilder, Type baseType, Type interfaceType)
         {
-            Type dictionaryType = typeof(Dictionary<string, object>);
-            ConstructorInfo dictionaryCtor = dictionaryType.GetConstructor(new Type[0]);
-            MethodInfo dictionaryAddMethod = dictionaryType.GetMethod("Add");
             FieldInfo connectionField = baseType.GetField("connection", BindingFlags.NonPublic | BindingFlags.Instance);
-            Type myType = typeof(RuntimeRepositoryGenerator);
 
             foreach (var method in interfaceType.GetMethods())
             {
@@ -96,38 +98,6 @@ namespace Dpa.Repository.Implements.Runtime
                 {
                     sqlQuery = queryAttribute.Query;
                     commandType = queryAttribute.CommandType;
-                }
-
-                MethodBuilder methodBuilder = typeBuilder.DefineMethod(method.Name,
-                    MethodAttributes.Public | MethodAttributes.Virtual | MethodAttributes.Final | MethodAttributes.NewSlot,
-                    methodReturnType,
-                    methodParamTypes);
-
-                ILGenerator il = methodBuilder.GetILGenerator(256);
-
-                // var dict = new Dictionary();
-                LocalBuilder localDictionary = il.DeclareLocal(dictionaryType);
-                il.Emit(OpCodes.Newobj, dictionaryCtor);
-                il.Emit(OpCodes.Stloc, localDictionary);
-
-                ParameterInfo[] parameters = method.GetParameters();
-                /***
-                 * foreach (var p in parameters) {
-                 *  dictionary.Add(p.Name, value);
-                 * }
-                 */
-                for (int i = 0; i < parameters.Length; ++i)
-                {
-                    /* dict.Add(string, value);*/
-                    il.Emit(OpCodes.Ldloc, localDictionary); // this
-                    il.Emit(OpCodes.Ldstr, parameters[i].Name); // string
-                    il.Emit(OpCodes.Ldarg, i + 1);
-                    if (parameters[i].ParameterType.IsValueType)
-                    {
-                        // (object) value
-                        il.Emit(OpCodes.Box, parameters[i].ParameterType);
-                    }
-                    il.Emit(OpCodes.Call, dictionaryAddMethod); // add
                 }
 
                 MethodInfo callMethod;
@@ -155,15 +125,60 @@ namespace Dpa.Repository.Implements.Runtime
                     }
                 }
 
-                //DapperExecute(this, sql, param, ommandType)
-                il.Emit(OpCodes.Ldarg_0);
-                il.Emit(OpCodes.Ldfld, connectionField);
-                il.Emit(OpCodes.Ldstr, sqlQuery);
-                il.Emit(OpCodes.Ldloc, localDictionary);
-                il.Emit(OpCodes.Ldc_I4, (int)commandType);
-                il.Emit(OpCodes.Call, callMethod);
+                MethodBuilder methodBuilder = typeBuilder.DefineMethod(method.Name,
+                    MethodAttributes.Public | MethodAttributes.Virtual | MethodAttributes.Final | MethodAttributes.NewSlot,
+                    methodReturnType,
+                    methodParamTypes);
 
-                il.Emit(OpCodes.Ret);
+                ILGenerator il = methodBuilder.GetILGenerator(256);
+                ParameterInfo[] parameters = method.GetParameters();
+                if (parameters.Length == 1 && parameters[0].ParameterType.IsClass && typeof(string) != parameters[0].ParameterType)
+                {
+                    il.Emit(OpCodes.Ldarg_0);
+                    il.Emit(OpCodes.Ldfld, connectionField);
+                    il.Emit(OpCodes.Ldstr, sqlQuery);
+                    il.Emit(OpCodes.Ldarg_1);
+                    il.Emit(OpCodes.Ldc_I4, (int)commandType);
+                    il.Emit(OpCodes.Call, callMethod);
+
+                    il.Emit(OpCodes.Ret);
+                }
+                else
+                {
+                    // var dict = new Dictionary();
+                    LocalBuilder localDictionary = il.DeclareLocal(dictionaryType);
+                    il.Emit(OpCodes.Newobj, dictionaryCtor);
+                    il.Emit(OpCodes.Stloc, localDictionary);
+
+                    /***
+                     * foreach (var p in parameters) {
+                     *  dictionary.Add(p.Name, value);
+                     * }
+                     */
+                    for (int i = 0; i < parameters.Length; ++i)
+                    {
+                        /* dict.Add(string, value);*/
+                        il.Emit(OpCodes.Ldloc, localDictionary); // this
+                        il.Emit(OpCodes.Ldstr, parameters[i].Name); // string
+                        il.Emit(OpCodes.Ldarg, i + 1);
+                        if (parameters[i].ParameterType.IsValueType)
+                        {
+                            // (object) value
+                            il.Emit(OpCodes.Box, parameters[i].ParameterType);
+                        }
+                        il.Emit(OpCodes.Call, dictionaryAddMethod); // add
+                    }
+
+                    //DapperExecute(this, sql, param, ommandType)
+                    il.Emit(OpCodes.Ldarg_0);
+                    il.Emit(OpCodes.Ldfld, connectionField);
+                    il.Emit(OpCodes.Ldstr, sqlQuery);
+                    il.Emit(OpCodes.Ldloc, localDictionary);
+                    il.Emit(OpCodes.Ldc_I4, (int)commandType);
+                    il.Emit(OpCodes.Call, callMethod);
+
+                    il.Emit(OpCodes.Ret);
+                }
             }
         }
 

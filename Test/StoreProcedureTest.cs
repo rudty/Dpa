@@ -10,32 +10,14 @@ using System.Threading.Tasks;
 
 namespace Test
 {
-    public class StoreProcedureTest : IDisposable
+    [Collection("sqlserver")]
+    public class StoreProcedureTest : IClassFixture<SqlServerDatabaseFixture>
     {
         private DbConnection connection;
 
-        public StoreProcedureTest()
+        public StoreProcedureTest(SqlServerDatabaseFixture fixture)
         {
-            connection = new SqlConnection("server=localhost;Integrated Security=SSPI; database=test");
-            connection.Open();
-
-            DbCommand cmd = connection.CreateCommand();
-            cmd.CommandText = "drop table if exists " + TestIntKeyEntity.TableName;
-            cmd.ExecuteNonQuery();
-
-            cmd.CommandText = TestIntKeyEntity.SqliteCreateTableQuery;
-            cmd.ExecuteNonQuery();
-
-            cmd = connection.CreateCommand();
-            cmd.CommandText = $"insert into {TestIntKeyEntity.TableName} values(1, 'a'), (2, 'b'), (3, 'c'), (999, 'd'), (999, 'e'), (999, 'f');";
-            cmd.ExecuteNonQuery();
-
-            cmd.Dispose();
-        }
-
-        public void Dispose()
-        {
-            connection.Dispose();
+            this.connection = fixture.SqlServerConnection;
         }
 
         [Fact]
@@ -55,15 +37,15 @@ namespace Test
             await repository.EnsureStoreProcedure();
 
             TestIntKeyEntity[] updateRows = new TestIntKeyEntity[] {
-                new TestIntKeyEntity(1, "q"),
-                new TestIntKeyEntity(2, "w"),
-                new TestIntKeyEntity(3, "e"),
+                new TestIntKeyEntity(10, "q"),
+                new TestIntKeyEntity(11, "w"),
+                new TestIntKeyEntity(12, "e"),
             };
 
             // nocount on 일때는 affectedRows 를 반환하지 않음 
             await repository.Update(updateRows);
 
-            List<TestIntKeyEntity> r = TestIntKeyEntity.SelectEntity(connection, 1, 2, 3);
+            List<TestIntKeyEntity> r = TestIntKeyEntity.SelectEntity(connection, 10, 11, 12);
             Assert.Equal(r, updateRows);
         }
 
@@ -71,10 +53,10 @@ namespace Test
         public async Task DeleteManyIntTest()
         {
             IStoreProcedureCrudRepository<TestIntKeyEntity, int> repository = await RepositoryGenerator.SqlServerStoreProcedure<TestIntKeyEntity, int>(connection);
-            int[] deleteRows = new int[] { 1, 2, 3 };
+            int[] deleteRows = new int[] { 7, 8, 9 };
             await repository.Delete(deleteRows);
 
-            List<TestIntKeyEntity> r = TestIntKeyEntity.SelectEntity(connection, 1, 2, 3);
+            List<TestIntKeyEntity> r = TestIntKeyEntity.SelectEntity(connection, 7, 8, 9);
             Assert.Empty(r);
         }
 

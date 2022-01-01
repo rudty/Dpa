@@ -8,6 +8,7 @@ using Test.Entity;
 using System.Data.SqlClient;
 using System.Collections.Generic;
 using System.Linq;
+using System.Data;
 
 namespace Test
 {
@@ -22,6 +23,35 @@ namespace Test
         public int object_id { get; set; }
     }
 
+    public class ParamObject
+    {
+        public int A { get; set; }
+
+        public int B { get; set; }
+
+        public string C { get; set; }
+
+        // override object.Equals
+        public override bool Equals(object obj)
+        {
+
+            if (obj == null || GetType() != obj.GetType())
+            {
+                return false;
+            }
+
+            ParamObject other = (ParamObject)obj;
+            return other.A == A && other.B == B && other.C == C;
+        }
+
+        // override object.GetHashCode
+        public override int GetHashCode()
+        {
+            // TODO: write your implementation of GetHashCode() here
+            return base.GetHashCode();
+        }
+    }
+
     public interface IHello
     {
         [Query("select * from " + TestIntKeyEntity.TableName + " where id = @id")]
@@ -29,57 +59,21 @@ namespace Test
 
         Task<MyDateTime> CustomTestDateProcedure();
 
-        Task<IEnumerable<SysTables>> CustomTestTableSysTablesProcedure(string tablename);
+        Task<List<SysTables>> CustomTestTableSysTablesProcedure(string tablename);
+
+        Task<ParamObject> CustomObjectParams(ParamObject o);
+
+        Task UpdateTestIntEntity(TestIntKeyEntity e);
     }
 
-    public class CustomTest : IDisposable
+    [Collection("sqlserver")]
+    public class CustomTest : IClassFixture<SqlServerDatabaseFixture>
     {
         private DbConnection connection;
 
-        public CustomTest()
+        public CustomTest(SqlServerDatabaseFixture fixture)
         {
-            connection = new SqlConnection("server=localhost;Integrated Security=SSPI; database=test");
-            connection.Open();
-
-            DbCommand cmd = connection.CreateCommand();
-            cmd.CommandText = "drop table if exists " + TestIntKeyEntity.TableName;
-            cmd.ExecuteNonQuery();
-
-            cmd.CommandText = TestIntKeyEntity.SqliteCreateTableQuery;
-            cmd.ExecuteNonQuery();
-
-            cmd.CommandText = $"insert into {TestIntKeyEntity.TableName} values(1, 'a'), (2, 'b'), (3, 'c'), (999, 'd'), (999, 'e'), (999, 'f');";
-            cmd.ExecuteNonQuery();
-
-            cmd.CommandText = @"drop proc if exists CustomTestDateProcedure;";
-            cmd.ExecuteNonQuery();
-
-            cmd.CommandText = @"
-create proc CustomTestDateProcedure
-as
-begin
-select getdate() as [NowDate]
-end";
-            cmd.ExecuteNonQuery();
-
-            cmd.CommandText = @"drop proc if exists CustomTestTableSysTablesProcedure;";
-            cmd.ExecuteNonQuery();
-
-            cmd.CommandText = @"
-create proc CustomTestTableSysTablesProcedure
-@tablename varchar(max)
-as
-begin
-select type_desc, object_id from sys.tables where [name] = @tablename 
-end";
-            cmd.ExecuteNonQuery();
-
-            cmd.Dispose();
-        }
-
-        public void Dispose()
-        {
-            connection.Dispose();
+            this.connection = fixture.SqlServerConnection;
         }
 
         [Fact]
@@ -106,6 +100,20 @@ end";
         [Fact]
         public async Task GetDateProcedure()
         {
+            var cmd = connection.CreateCommand();
+            cmd.CommandText = @"drop proc if exists CustomTestDateProcedure;";
+            cmd.ExecuteNonQuery();
+
+            cmd.CommandText = @"
+create proc CustomTestDateProcedure
+as
+begin
+select getdate() as [NowDate]
+end";
+            cmd.ExecuteNonQuery();
+
+            cmd.Dispose();
+
             var repo = await RepositoryGenerator.Custom<IHello>(connection);
             var r = await repo.CustomTestDateProcedure();
             Assert.True(r.NowDate.Ticks > 0);
@@ -114,11 +122,90 @@ end";
         [Fact]
         public async Task SysTable()
         {
+            using (var cmd = connection.CreateCommand())
+            {
+                cmd.CommandText = @"drop proc if exists CustomTestTableSysTablesProcedure;";
+                cmd.ExecuteNonQuery();
+
+                cmd.CommandText = @"
+create proc CustomTestTableSysTablesProcedure
+@tablename varchar(max)
+as
+begin
+select type_desc, object_id from sys.tables where [name] = @tablename;
+end";
+                cmd.ExecuteNonQuery();
+            }
+
             var repo = await RepositoryGenerator.Custom<IHello>(connection);
-            var r = await repo.CustomTestTableSysTablesProcedure("inttable");
+            List<SysTables> r = await repo.CustomTestTableSysTablesProcedure("inttable");
             var firstResult = r.First();
             Assert.True(firstResult.object_id > 0);
             Assert.False(string.IsNullOrEmpty(firstResult.type_desc));
+        }
+
+        [Fact]
+        public async Task ObjectParameter()
+        {
+            using (var cmd = connection.CreateCommand())
+            {
+                cmd.CommandText = "drop proc if exists CustomObjectParams;";
+                cmd.ExecuteNonQuery();
+
+                cmd.CommandText = $@"
+create proc CustomObjectParams
+@a int,
+@b int,
+@c varchar(max)
+as
+begin
+select (@a + 1) as [A], (@b + 1) as [B], (@c + 'c') as [C];
+end";
+                cmd.ExecuteNonQuery();
+            }
+
+            var repo = await RepositoryGenerator.Custom<IHello>(connection);
+            var p = new ParamObject()
+            {
+                A = 3,
+                B = 2,
+                C = "ab",
+            };
+            var r = await repo.CustomObjectParams(p);
+            Assert.Equal(new ParamObject()
+            {
+                A = 4,
+                B = 3,
+                C = "abc",
+            }, r);
+        }
+
+        [Fact]
+        public async Task Update()
+        {
+            using (var cmd = connection.CreateCommand())
+            {
+                cmd.CommandText = "drop proc if exists UpdateTestIntEntity;";
+                cmd.ExecuteNonQuery();
+
+                cmd.CommandText = $@"
+create proc UpdateTestIntEntity
+@id int,
+@value varchar(max)
+as
+begin
+    update inttable set [value] = @value where [id] = @id;
+end";
+                cmd.ExecuteNonQuery();
+            }
+
+            var update = new TestIntKeyEntity(13, "ZZZZ");
+            var repo = await RepositoryGenerator.Custom<IHello>(connection);
+            await repo.UpdateTestIntEntity(update);
+
+            TestIntKeyEntity findEntity = TestIntKeyEntity.SelectEntityFirst(connection, 13);
+
+            Assert.Equal(update, findEntity);
         }
     }
 }
