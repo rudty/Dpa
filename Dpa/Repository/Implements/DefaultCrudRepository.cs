@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using Dpa.Repository.Implements.Runtime;
+using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
 using System.Linq;
@@ -6,14 +7,13 @@ using System.Threading.Tasks;
 
 namespace Dpa.Repository.Implements
 {
-    public class DefaultCrudRepository<T, ID> : IStoreProcedureCrudRepository<T, ID>
+    public class DefaultCrudRepository<T, ID> : BaseRepository, IStoreProcedureCrudRepository<T, ID>
     {
-        protected readonly DbConnection connection;
         protected readonly IRepositoryQuery<T, ID> repositoryQuery;
 
         public DefaultCrudRepository(DbConnection connection, IRepositoryQuery<T, ID> repositoryQuery)
+            : base(connection)
         {
-            this.connection = connection;
             this.repositoryQuery = repositoryQuery;
         }
 
