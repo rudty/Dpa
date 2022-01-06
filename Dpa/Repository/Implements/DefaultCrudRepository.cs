@@ -29,7 +29,7 @@ namespace Dpa.Repository.Implements
 
         Task<T> ICrudRepository<T, ID>.SelectRow(ID id)
         {
-            return Dapper.SqlMapper.QueryFirstAsync<T>(
+            return Dapper.SqlMapper.QueryFirstOrDefaultAsync<T>(
                 connection, 
                 repositoryQuery.Select.query, 
                 repositoryQuery.Select.parameterBinder(id), 

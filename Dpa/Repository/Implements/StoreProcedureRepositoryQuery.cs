@@ -4,11 +4,12 @@ using System.Data;
 using System.Data.Common;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace Dpa.Repository.Implements
 {
-    internal class StoreProcedureRepositoryQuery<T, ID> : IRepositoryQuery<T, ID>
+    public class StoreProcedureRepositoryQuery<T, ID> : IRepositoryQuery<T, ID>
     {
         public QueryAndParameter<ID> Select { get; }
 
@@ -20,17 +21,19 @@ namespace Dpa.Repository.Implements
 
         CommandType IRepositoryQuery<T, ID>.CommandType => CommandType.StoredProcedure;
 
-        internal StoreProcedureRepositoryQuery()
+        public StoreProcedureRepositoryQuery()
         {
             RepositoryPropertyNameInfo propertyNameInfo = ReflectUtils.GetRepositoryPropertyInfo(typeof(T));
 
             Func<ID, object> idBinder = IRepositoryQuery<T, ID>.GetDefaultIdQueryParameterBinder();
             Func<T, object> entityBinder = IRepositoryQuery<T, ID>.GetDefaultEntityQueryParameterBinder();
 
-            Select = new QueryAndParameter<ID>($"__{propertyNameInfo.TableName}_select_dpa_generated", idBinder);
-            Insert = new QueryAndParameter<T>($"__{propertyNameInfo.TableName}_insert_dpa_generated", entityBinder);
-            Update = new QueryAndParameter<T>($"__{propertyNameInfo.TableName}_update_dpa_generated", entityBinder);
-            Delete = new QueryAndParameter<ID>($"__{propertyNameInfo.TableName}_delete_dpa_generated", idBinder);
+            string storeProcedureTableName = GetStoreProcedureTableName(propertyNameInfo.TableName);
+
+            Select = new QueryAndParameter<ID>($"__{storeProcedureTableName}_select_dpa_generated", idBinder);
+            Insert = new QueryAndParameter<T>($"__{storeProcedureTableName}_insert_dpa_generated", entityBinder);
+            Update = new QueryAndParameter<T>($"__{storeProcedureTableName}_update_dpa_generated", entityBinder);
+            Delete = new QueryAndParameter<ID>($"__{storeProcedureTableName}_delete_dpa_generated", idBinder);
         }
 
         private async Task<Dictionary<string, TableType>> GetTableType(DbConnection connection, string tableName)
@@ -79,12 +82,20 @@ namespace Dpa.Repository.Implements
             string entityProcedureParameter = MakeStoreProcedureParameter(tableType, propertyNameInfo.PropertyNames);
             TextRepositoryQuery<T, ID> textRepositoryQuery = new TextRepositoryQuery<T, ID>();
 
-            await DropAndCreateProcedure(connection, propertyNameInfo.TableName, idStoreProcedureParameter, "select", textRepositoryQuery.Select.query);
-            await DropAndCreateProcedure(connection, propertyNameInfo.TableName, entityProcedureParameter, "insert", textRepositoryQuery.Insert.query);
-            await DropAndCreateProcedure(connection, propertyNameInfo.TableName, entityProcedureParameter, "update", textRepositoryQuery.Update.query);
-            await DropAndCreateProcedure(connection, propertyNameInfo.TableName, idStoreProcedureParameter, "delete", textRepositoryQuery.Delete.query);
+            string storeProcedureTableName = GetStoreProcedureTableName(propertyNameInfo.TableName);
+
+            await DropAndCreateProcedure(connection, storeProcedureTableName, idStoreProcedureParameter, "select", textRepositoryQuery.Select.query);
+            await DropAndCreateProcedure(connection, storeProcedureTableName, entityProcedureParameter, "insert", textRepositoryQuery.Insert.query);
+            await DropAndCreateProcedure(connection, storeProcedureTableName, entityProcedureParameter, "update", textRepositoryQuery.Update.query);
+            await DropAndCreateProcedure(connection, storeProcedureTableName, idStoreProcedureParameter, "delete", textRepositoryQuery.Delete.query);
  
             return;
+        }
+
+        private static string GetStoreProcedureTableName(string tableName)
+        {
+            Regex regex = new Regex("[\\@\\#]");
+            return regex.Replace(tableName, string.Empty);
         }
 
         private static async Task DropAndCreateProcedure(DbConnection connection, string tableName, string storeProcedureParameter, string op, string query)

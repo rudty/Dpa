@@ -6,7 +6,7 @@ using System.Text;
 
 namespace Dpa.Repository.Implements
 {
-    internal class TextRepositoryQuery<T, ID> : IRepositoryQuery<T, ID>
+    public class TextRepositoryQuery<T, ID> : IRepositoryQuery<T, ID>
     {
         public QueryAndParameter<ID> Select { get; }
 
