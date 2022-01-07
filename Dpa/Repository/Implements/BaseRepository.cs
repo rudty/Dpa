@@ -1,14 +1,16 @@
 ﻿using System.Data.Common;
+using System.Reflection;
 
-namespace Dpa.Repository.Implements.Runtime
+namespace Dpa.Repository.Implements
 {
     /// <summary>
-    /// 단순히 DbConnection 을 가집니다
-    /// 런타임에 DefaultCrudRepository 또는 이것을 상속받고 있으므로
-    /// connection 변수 이름을 변경 시 주의가 필요합니다
+    /// 기본 Repository 구현체
     /// </summary>
     public class BaseRepository
     {
+        public static readonly FieldInfo ConnectionField = typeof(BaseRepository)
+            .GetField(nameof(connection), BindingFlags.NonPublic | BindingFlags.Instance);
+
         protected readonly DbConnection connection;
 
         public BaseRepository(DbConnection connection)
