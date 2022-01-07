@@ -30,10 +30,10 @@ namespace Dpa.Repository.Implements
 
             string storeProcedureTableName = GetStoreProcedureTableName(propertyNameInfo.TableName);
 
-            Select = new QueryAndParameter<ID>($"__{storeProcedureTableName}_select_dpa_generated", idBinder);
-            Insert = new QueryAndParameter<T>($"__{storeProcedureTableName}_insert_dpa_generated", entityBinder);
-            Update = new QueryAndParameter<T>($"__{storeProcedureTableName}_update_dpa_generated", entityBinder);
-            Delete = new QueryAndParameter<ID>($"__{storeProcedureTableName}_delete_dpa_generated", idBinder);
+            Select = new QueryAndParameter<ID>($"{storeProcedureTableName}_select_dpa_generated", idBinder);
+            Insert = new QueryAndParameter<T>($"{storeProcedureTableName}_insert_dpa_generated", entityBinder);
+            Update = new QueryAndParameter<T>($"{storeProcedureTableName}_update_dpa_generated", entityBinder);
+            Delete = new QueryAndParameter<ID>($"{storeProcedureTableName}_delete_dpa_generated", idBinder);
         }
 
         private async Task<Dictionary<string, TableType>> GetTableType(DbConnection connection, string tableName)
@@ -94,13 +94,13 @@ namespace Dpa.Repository.Implements
 
         private static string GetStoreProcedureTableName(string tableName)
         {
-            Regex regex = new Regex("[\\@\\#]");
+            Regex regex = new Regex("[\\@\\[\\]]");
             return regex.Replace(tableName, string.Empty);
         }
 
         private static async Task DropAndCreateProcedure(DbConnection connection, string tableName, string storeProcedureParameter, string op, string query)
         {
-            string storeProcedureName = $"__{tableName}_{op}_dpa_generated";
+            string storeProcedureName = $"{tableName}_{op}_dpa_generated";
             using (DbCommand command = connection.CreateCommand())
             {
                 command.CommandText = $"drop proc if exists {storeProcedureName};";
