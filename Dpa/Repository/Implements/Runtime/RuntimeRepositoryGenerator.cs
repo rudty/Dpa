@@ -13,37 +13,24 @@ namespace Dpa.Repository.Implements.Runtime
     {
         private static readonly AssemblyBuilder assemblyBuilder = AssemblyBuilder.DefineDynamicAssembly(new AssemblyName("repo_assembly"), AssemblyBuilderAccess.Run);
         private static readonly ModuleBuilder moduleBuilder = assemblyBuilder.DefineDynamicModule("repoModule");
-        private static readonly Dictionary<(Type, Type), Type> typeGenerateCache = new Dictionary<(Type, Type), Type>();
 
-        private static readonly Type myType = typeof(RuntimeRepositoryGenerator);
-
-        private static readonly object typeCacheLock = new object();
         private static int generateCount = 0;
 
         public static Type Generate(Type baseType, Type generateInterface)
         {
             Type buildType;
-            lock (typeCacheLock)
-            {
-                if (typeGenerateCache.TryGetValue((baseType, generateInterface), out buildType))
-                {
-                    return buildType;
-                }
+  
+            int gen = Interlocked.Increment(ref generateCount);
 
-                int gen = generateCount++;
+            TypeBuilder typeBuilder = moduleBuilder.DefineType(
+                  "Custom_generate" + gen,
+                  TypeAttributes.Public | TypeAttributes.Class,
+                  parent: baseType,
+                  interfaces: new Type[] { generateInterface });
 
-                TypeBuilder typeBuilder = moduleBuilder.DefineType(
-                      "Custom_generate" + gen,
-                      TypeAttributes.Public | TypeAttributes.Class,
-                      parent: baseType,
-                      interfaces: new Type[] { generateInterface });
-
-                GenerateConstructor(typeBuilder, baseType);
-                GenerateMethod(typeBuilder, baseType, generateInterface);
-                buildType = typeBuilder.CreateType();
-
-                typeGenerateCache[(baseType, generateInterface)] = buildType;
-            }
+            GenerateConstructor(typeBuilder, baseType);
+            GenerateMethod(typeBuilder, generateInterface);
+            buildType = typeBuilder.CreateType();
 
             return buildType;
         }
@@ -66,7 +53,7 @@ namespace Dpa.Repository.Implements.Runtime
         {
             const string memberPrefix = "m_";
             const string getterMethodPrefix = "get_";
-            int gen = generateCount++;
+            int gen = Interlocked.Increment(ref generateCount);
 
             TypeBuilder typeBuilder = moduleBuilder.DefineType("Anonymous_generate" + gen);
             FieldBuilder[] fields = new FieldBuilder[parameters.Length];
@@ -151,9 +138,9 @@ namespace Dpa.Repository.Implements.Runtime
         /// <summary>
         /// interface의 멤버들을 구현합니다
         /// </summary>
-        public static void GenerateMethod(TypeBuilder typeBuilder, Type baseType, Type interfaceType)
+        public static void GenerateMethod(TypeBuilder typeBuilder, Type interfaceType)
         {
-            FieldInfo connectionField = baseType.GetField("connection", BindingFlags.NonPublic | BindingFlags.Instance);
+            FieldInfo connectionField = BaseRepository.ConnectionField;
 
             foreach (var method in interfaceType.GetMethods())
             {
@@ -174,30 +161,7 @@ namespace Dpa.Repository.Implements.Runtime
                     commandType = queryAttribute.CommandType;
                 }
 
-                MethodInfo callMethod;
-                if (methodReturnType == typeof(Task))
-                {
-                    callMethod = myType.GetMethod("DapperExecute", BindingFlags.Public | BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Instance);
-                }
-                else
-                {
-                    Type taskReturnType = methodReturnType.GetGenericArguments()[0];
-                    if (taskReturnType.IsGenericType)
-                    {
-                        Type firstGenericArgmentType = taskReturnType.GetGenericArguments()[0];
-                        if (!typeof(System.Collections.Generic.IEnumerable<>).MakeGenericType(firstGenericArgmentType).IsAssignableFrom(taskReturnType))
-                        {
-                            throw new ArgumentException("must IEnumerable");
-                        }
-                        callMethod = myType.GetMethod("DapperQuery", BindingFlags.Public | BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Instance)
-                            .MakeGenericMethod(firstGenericArgmentType);
-                    }
-                    else
-                    {
-                        callMethod = myType.GetMethod("DapperQueryFirst", BindingFlags.Public | BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Instance)
-                            .MakeGenericMethod(taskReturnType);
-                    }
-                }
+                MethodInfo callMethod = FindCallMethod(methodReturnType);
 
                 MethodBuilder methodBuilder = typeBuilder.DefineMethod(method.Name,
                     MethodAttributes.Public | MethodAttributes.Virtual | MethodAttributes.Final | MethodAttributes.NewSlot,
@@ -243,6 +207,41 @@ namespace Dpa.Repository.Implements.Runtime
                     il.Emit(OpCodes.Ret); 
                 }
             }
+        }
+
+        private const BindingFlags findMethodFlags = BindingFlags.Public | BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Instance;
+        private static readonly Type myType = typeof(RuntimeRepositoryGenerator);
+        private static readonly MethodInfo dapperExecuteMethod = myType.GetMethod("DapperExecute", findMethodFlags);
+        private static readonly MethodInfo dapperQueryMethod = myType.GetMethod("DapperQuery", findMethodFlags);
+        private static readonly MethodInfo dapperQueryMethod_object = dapperQueryMethod.MakeGenericMethod(typeof(object));
+        private static readonly MethodInfo dapperQueryFirstMethod = myType.GetMethod("DapperQueryFirst", findMethodFlags);
+
+        private static MethodInfo FindCallMethod(Type t)
+        {
+            if (t == typeof(Task))
+            {
+                return dapperExecuteMethod;
+            }
+
+            // Task<T>
+            Type taskResultType = t.GetGenericArguments()[0];
+            if (taskResultType.IsGenericType)
+            {
+                Type firstGenericArgmentType = taskResultType.GetGenericArguments()[0];
+                if (typeof(System.Collections.Generic.IEnumerable<>)
+                    .MakeGenericType(firstGenericArgmentType)
+                    .IsAssignableFrom(taskResultType))
+                {
+                    return dapperQueryMethod.MakeGenericMethod(firstGenericArgmentType);
+                }
+            }
+
+            if (typeof(System.Collections.IEnumerable).IsAssignableFrom(taskResultType))
+            {
+                return dapperQueryMethod_object;
+            }
+
+            return dapperQueryFirstMethod.MakeGenericMethod(taskResultType);
         }
 
         private static bool IsEntityParameter(ParameterInfo[] parameters)
@@ -313,7 +312,7 @@ namespace Dpa.Repository.Implements.Runtime
 
         public static Task<E> DapperQueryFirst<E>(DbConnection connection, string sql, object param, System.Data.CommandType commandType)
         {
-            return Dapper.SqlMapper.QueryFirstAsync<E>(connection, sql, param, commandType: commandType);
+            return Dapper.SqlMapper.QueryFirstOrDefaultAsync<E>(connection, sql, param, commandType: commandType);
         }
     }
 }
