@@ -47,28 +47,5 @@ namespace Test
             await repo.EnsureStoreProcedure();
             await CrudTestHelper.TestAll(repo);
         }
-
-        [Fact]
-        public async Task Foo()
-        {
-            System.Data.SqlClient.SqlConnection conn = (System.Data.SqlClient.SqlConnection)connection;
-            var cmd = conn.CreateCommand();
-            cmd.CommandText = @"create proc #hello
-@a varchar(600)
-as
-select* from sys.all_columns where name like @a";
-            cmd.ExecuteNonQuery();
-
-      
-            Dapper.DynamicParameters p = new Dapper.DynamicParameters();
-            var r = Dapper.SqlMapper.Query(connection, "exec #hello @a;", new
-            {
-                a = "c",
-                b = 3,
-                c = 7
-            });
-
-            System.Console.WriteLine(r);
-        }
     }
 }

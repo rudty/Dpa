@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Data;
 using System.Data.Common;
 using System.Linq;
@@ -87,11 +88,20 @@ namespace Dpa.Repository.Implements.Runtime
                 ParameterInfo[] parameters = method.GetParameters();
                 if (IsEntityParameter(parameters))
                 {
+                    Type entityType = parameters[0].ParameterType;
                     // Execute(connection, "select * from table", (param), commandType);
                     il.Emit(OpCodes.Ldarg_0);
                     il.Emit(OpCodes.Ldfld, connectionField);
                     il.Emit(OpCodes.Ldstr, sqlQuery);
                     il.Emit(OpCodes.Ldarg_1);
+
+                    if (ReflectUtils.HasEntityAttribute(entityType))
+                    {
+                        Type newType = GenerateAnonymousEntityFromEntity(entityType);
+                        ConstructorInfo ctor = newType.GetConstructors()[0];
+                        il.Emit(OpCodes.Newobj, ctor);
+                    }
+
                     il.Emit(OpCodes.Ldc_I4, (int)commandType);
                     il.Emit(OpCodes.Call, callMethod);
 
@@ -101,7 +111,7 @@ namespace Dpa.Repository.Implements.Runtime
                 {
                     // object param = new { p1 = arg0, p2 = arg1 };
                     // Execute(connection, "select * from table", param, commandType);
-                    Type anonymousClassType = GenerateParameterAnonymousEntity(parameters);
+                    Type anonymousClassType = GenerateAnonymousEntityFromParameter(parameters);
                     ConstructorInfo anonymousCtor = anonymousClassType.GetConstructors()[0];
 
                     LocalBuilder localAnonymousClass = il.DeclareLocal(anonymousClassType);

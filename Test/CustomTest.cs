@@ -50,6 +50,9 @@ namespace Test
 
         [Query("select * from " + TestIntKeyEntity.TableName + " where id = @id;")]
         Task<TestIntKeyEntity> GetEntity(int id);
+
+        [Query("#select_me", CommandType.StoredProcedure)]
+        Task<TestIntKeyEntity> SelectMe(TestIntKeyEntity entity);
     }
 
     public class CustomTest : SqlServerTestClass
@@ -149,6 +152,28 @@ end";
             var db = await repo.sp_databases_first();
             Assert.NotEmpty(db.DATABASE_NAME);
             Assert.True(db.DATABASE_SIZE > 0);
+        }
+
+        [Fact]
+        public async Task SelectMe()
+        {
+            var cmd = connection.CreateCommand();
+            cmd.CommandText = @"
+create proc #select_me
+    @id int,
+    @value varchar(500)
+as
+begin
+select  @id [Id], @value [myvalue]
+end";
+            await cmd.ExecuteNonQueryAsync();
+
+            cmd.Dispose();
+
+            var repo = await RepositoryGenerator.Custom<IIntRepository>(connection);
+            var entity = new TestIntKeyEntity(99, "vvvv");
+            TestIntKeyEntity r = await repo.SelectMe(entity);
+            Console.WriteLine(r);
         }
     }
 }

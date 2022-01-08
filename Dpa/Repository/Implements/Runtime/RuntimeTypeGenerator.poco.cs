@@ -1,4 +1,5 @@
 ﻿using System;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
@@ -8,30 +9,6 @@ namespace Dpa.Repository.Implements.Runtime
 {
     public static partial class RuntimeTypeGenerator
     {
-
-        /// <summary>
-        /// R fn_generate_1(T entity) {
-        ///     return new Anonymous_generate_1(entity);
-        /// }
-        /// </summary>
-        public static Func<T, object> CreateFunctionClonePropertyAnonymousEntity<T>(PropertyInfo[] properties)
-        {
-            Type entityType = typeof(T);
-            Type newType = GenerateClonePropertyAnonymousEntity(entityType, properties);
-            int gen = Interlocked.Increment(ref generateCount);
-
-            DynamicMethod m = new DynamicMethod("fn_generate_" + gen, newType, new Type[] { entityType }, true);
-            ConstructorInfo ctor = newType.GetConstructors()[0];
-
-            var il = m.GetILGenerator();
-            il.Emit(OpCodes.Ldarg_0);
-            il.Emit(OpCodes.Newobj, ctor);
-            il.Emit(OpCodes.Ret);
-
-            Func<T, object> fn = (Func<T, object>)m.CreateDelegate(typeof(Func<T, object>));
-            return fn;
-        }
-
         readonly struct NameAndType
         {
             public readonly string Name;
@@ -108,21 +85,25 @@ namespace Dpa.Repository.Implements.Runtime
         ///     }
         ///  }
         /// </summary>
-        public static Type GenerateClonePropertyAnonymousEntity(Type entityType, PropertyInfo[] properties)
+        public static Type GenerateAnonymousEntityFromEntity(Type entityType)
         {
+            PropertyInfo[] properties = entityType
+                .GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
+                .Where(p => p.GetCustomAttribute<NotMappedAttribute>() is null)
+                .ToArray();
+
             int gen = Interlocked.Increment(ref generateCount);
 
-            TypeBuilder typeBuilder = moduleBuilder.DefineType("Anonymous_generate" + gen);
+            TypeBuilder typeBuilder = moduleBuilder.DefineType("Anonymous_generate_e" + gen);
             FieldBuilder[] fields = DefineProperty(
-                typeBuilder, 
-                properties, 
-                p => new NameAndType(p.Name, p.PropertyType));
+                typeBuilder,
+                properties,
+                (p) => new NameAndType(p.Name, p.PropertyType));
 
             ConstructorBuilder ctor = typeBuilder.DefineConstructor(
                 MethodAttributes.Public,
                 CallingConventions.Standard,
                 new Type[] { entityType });
-
 
             ILGenerator il = ctor.GetILGenerator();
 
@@ -157,11 +138,11 @@ namespace Dpa.Repository.Implements.Runtime
         ///     }
         ///  }
         /// </summary>
-        public static Type GenerateParameterAnonymousEntity(ParameterInfo[] parameters)
+        public static Type GenerateAnonymousEntityFromParameter(ParameterInfo[] parameters)
         {
             int gen = Interlocked.Increment(ref generateCount);
 
-            TypeBuilder typeBuilder = moduleBuilder.DefineType("Anonymous_generate" + gen);
+            TypeBuilder typeBuilder = moduleBuilder.DefineType("Anonymous_generate_p" + gen);
             FieldBuilder[] fields = DefineProperty(
                 typeBuilder,
                 parameters,

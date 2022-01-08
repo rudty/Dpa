@@ -30,16 +30,9 @@ namespace Dpa.Repository.Implements
 
         public static Func<T, object> GetDefaultEntityQueryParameterBinder()
         {
-            Type entityType = typeof(T);
-            if (ReflectUtils.HasEntityAttribute(entityType))
+            if (ReflectUtils.HasEntityAttribute(typeof(T)))
             {
-                PropertyInfo[] props = entityType
-                    .GetProperties(ReflectUtils.TypeMapDefaultBindingFlags)
-                    .Where(p => p.GetCustomAttribute<NotMappedAttribute>() is null)
-                    .ToArray();
-
-                return RuntimeTypeGenerator.CreateFunctionClonePropertyAnonymousEntity<T>(props);
-                
+                return RuntimeTypeGenerator.CreateFunctionClonePropertyAnonymousEntity<T>();   
             }
             else
             {
