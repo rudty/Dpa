@@ -9,7 +9,7 @@ namespace Dpa.Repository.Implements.Runtime
 {
     public static partial class RuntimeTypeGenerator
     {
-        readonly struct NameAndType
+        private readonly struct NameAndType
         {
             public readonly string Name;
             public readonly Type Type;

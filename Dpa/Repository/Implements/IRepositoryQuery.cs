@@ -19,8 +19,7 @@ namespace Dpa.Repository.Implements
 
         public static Func<ID, object> GetDefaultIdQueryParameterBinder()
         {
-            Type idType = typeof(ID);
-            if (idType.IsPrimitive || idType == typeof(string))
+            if (ReflectUtils.IsPrimitiveLike(typeof(ID)))
             {
                 return IdBinder;
             }

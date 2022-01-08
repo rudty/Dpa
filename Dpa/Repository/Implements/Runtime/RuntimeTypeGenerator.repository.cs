@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations.Schema;
 using System.Data;
 using System.Data.Common;
 using System.Linq;
@@ -80,7 +79,7 @@ namespace Dpa.Repository.Implements.Runtime
                 MethodInfo callMethod = FindCallMethod(methodReturnType);
 
                 MethodBuilder methodBuilder = typeBuilder.DefineMethod(method.Name,
-                    MethodAttributes.Public | MethodAttributes.Virtual | MethodAttributes.Final | MethodAttributes.NewSlot,
+                    MethodAttributes.Public | MethodAttributes.Virtual | MethodAttributes.Final,
                     methodReturnType,
                     methodParamTypes);
 
@@ -97,6 +96,9 @@ namespace Dpa.Repository.Implements.Runtime
 
                     if (ReflectUtils.HasEntityAttribute(entityType))
                     {
+                        // Execute(connection, "select * from table", new {
+                        // A = param.A, B = param.B
+                        // }, commandType);
                         Type newType = GenerateAnonymousEntityFromEntity(entityType);
                         ConstructorInfo ctor = newType.GetConstructors()[0];
                         il.Emit(OpCodes.Newobj, ctor);
@@ -185,48 +187,12 @@ namespace Dpa.Repository.Implements.Runtime
                 return false;
             }
 
-            if (IsPrimitiveLike(firstType))
+            if (ReflectUtils.IsPrimitiveLike(firstType))
             {
                 return false;
             }
             return true;
         }
-
-        private static bool IsPrimitiveLike(Type t)
-        {
-            if (t.IsPrimitive)
-            {
-                return true;
-            }
-        
-            if (t == typeof(string))
-            {
-                return true;
-            }
-
-            if (t == typeof(DateTime))
-            {
-                return true;
-            }
-
-            if (t == typeof(TimeSpan))
-            {
-                return true;
-            }
-
-            if (t == typeof(System.Numerics.BigInteger))
-            {
-                return true;
-            }
-
-            if (t == typeof(decimal))
-            {
-                return true;
-            }
-
-            return false;
-        }
-
         public static Task DapperExecute(DbConnection connection, string sql, object param, System.Data.CommandType commandType)
         {
             return Dapper.SqlMapper.ExecuteAsync(connection, sql, param, commandType: commandType);

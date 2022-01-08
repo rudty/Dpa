@@ -66,6 +66,41 @@ namespace Dpa.Repository
             }
         }
 
+        public static bool IsPrimitiveLike(Type t)
+        {
+            if (t.IsPrimitive)
+            {
+                return true;
+            }
+
+            if (t == typeof(string))
+            {
+                return true;
+            }
+
+            if (t == typeof(DateTime))
+            {
+                return true;
+            }
+
+            if (t == typeof(TimeSpan))
+            {
+                return true;
+            }
+
+            if (t == typeof(System.Numerics.BigInteger))
+            {
+                return true;
+            }
+
+            if (t == typeof(decimal))
+            {
+                return true;
+            }
+
+            return false;
+        }
+
         public static bool HasEntityAttribute(Type type)
         {
             HashSet<Type> attributeTypes = new HashSet<Type>();
