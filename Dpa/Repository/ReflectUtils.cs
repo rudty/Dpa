@@ -1,7 +1,9 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Linq;
 using System.Reflection;
 using System.Text;
 
@@ -44,15 +46,25 @@ namespace Dpa.Repository
 
     internal static class ReflectUtils
     {
+        private const BindingFlags typeMapDefaultBindingFlags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
+        private static readonly ConcurrentDictionary<Type, bool> registeredTypeMap = new ConcurrentDictionary<Type, bool>();
+
         public static void SetTypeMap(Type type)
         {
-            Dapper.CustomPropertyTypeMap typeMap = new Dapper.CustomPropertyTypeMap(type, PropertySelector);
-            Dapper.SqlMapper.SetTypeMap(type, typeMap);
+            if (registeredTypeMap.TryAdd(type, true))
+            {
+                PropertyInfo[] propertyInfo = type.GetProperties(typeMapDefaultBindingFlags);
+                if (propertyInfo.Any(p => p.GetCustomAttribute<ColumnAttribute>() != null))
+                {
+                    Dapper.CustomPropertyTypeMap typeMap = new Dapper.CustomPropertyTypeMap(type, PropertySelector);
+                    Dapper.SqlMapper.SetTypeMap(type, typeMap);
+                }
+            }
         }
 
         private static PropertyInfo PropertySelector(Type classType, string columnName)
         {
-            PropertyInfo[] propertyInfo = classType.GetProperties();
+            PropertyInfo[] propertyInfo = classType.GetProperties(typeMapDefaultBindingFlags);
             for (int i = 0; i < propertyInfo.Length; ++i)
             {
                 ColumnAttribute columnAttribute = propertyInfo[i].GetCustomAttribute<ColumnAttribute>();

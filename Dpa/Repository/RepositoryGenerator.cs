@@ -93,17 +93,25 @@ namespace Dpa.Repository
             Type baseImplementRepositoryType;
             if ((baseImplementRepositoryType = repoType.GetInterface(typeof(IStoreProcedureCrudRepository<,>).Name)) != null) 
             {
-                baseType = typeof(DefaultCrudRepository<,>).MakeGenericType(baseImplementRepositoryType.GetGenericArguments());
+                Type[] genericArgumentTypes = baseImplementRepositoryType.GetGenericArguments();
+                Type entityType = genericArgumentTypes[0]; // <T, ID>
+                ReflectUtils.SetTypeMap(entityType);
+
+                baseType = typeof(DefaultCrudRepository<,>).MakeGenericType(genericArgumentTypes);
                 Type repositoryQueryType = typeof(StoreProcedureRepositoryQuery<,>)
-                    .MakeGenericType(baseImplementRepositoryType.GetGenericArguments());
+                    .MakeGenericType(genericArgumentTypes);
                 repositoryQuery = Activator.CreateInstance(repositoryQueryType);
             }
             else if ((baseImplementRepositoryType = repoType.GetInterface(typeof(ICrudRepository<,>).Name)) != null)
             {
+                Type[] genericArgumentTypes = baseImplementRepositoryType.GetGenericArguments();
+                Type entityType = genericArgumentTypes[0]; // <T, ID>
+                ReflectUtils.SetTypeMap(entityType);
+
                 baseType = typeof(DefaultCrudRepository<,>)
-                    .MakeGenericType(baseImplementRepositoryType.GetGenericArguments());
+                    .MakeGenericType(genericArgumentTypes);
                 Type repositoryQueryType = typeof(TextRepositoryQuery<,>)
-                    .MakeGenericType(baseImplementRepositoryType.GetGenericArguments());
+                    .MakeGenericType(genericArgumentTypes);
                 repositoryQuery = Activator.CreateInstance(repositoryQueryType);
             }
             else
@@ -134,7 +142,6 @@ namespace Dpa.Repository
                 argument = new object[] { dbConnection };
             }
             object instance = Activator.CreateInstance(customType, argument, null);
-            ReflectUtils.SetTypeMap(customType);
             return instance;
         }
 

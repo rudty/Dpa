@@ -30,16 +30,21 @@ namespace Dpa.Repository.Implements
 
             string storeProcedureTableName = GetStoreProcedureTableName(propertyNameInfo.TableName);
 
-            Select = new QueryAndParameter<ID>($"{storeProcedureTableName}_select_dpa_generated", idBinder);
-            Insert = new QueryAndParameter<T>($"{storeProcedureTableName}_insert_dpa_generated", entityBinder);
-            Update = new QueryAndParameter<T>($"{storeProcedureTableName}_update_dpa_generated", entityBinder);
-            Delete = new QueryAndParameter<ID>($"{storeProcedureTableName}_delete_dpa_generated", idBinder);
+            Select = new QueryAndParameter<ID>(GetStoreProcedureName(storeProcedureTableName, "select"), idBinder);
+            Insert = new QueryAndParameter<T>(GetStoreProcedureName(storeProcedureTableName, "insert"), entityBinder);
+            Update = new QueryAndParameter<T>(GetStoreProcedureName(storeProcedureTableName, "update"), entityBinder);
+            Delete = new QueryAndParameter<ID>(GetStoreProcedureName(storeProcedureTableName, "delete"), idBinder);
         }
 
         private async Task<Dictionary<string, TableType>> GetTableType(DbConnection connection, string tableName)
         {
             IEnumerable<TableType> tableType = await Dapper.SqlMapper.QueryAsync<TableType>(connection, $"select [name] as [ColumnName], [system_type_name] as [ColumnTypeName] from sys.dm_exec_describe_first_result_set('select top 1 * from {tableName}', null, 0);");
             return tableType.ToDictionary(e => e.ColumnName.ToUpper());
+        }
+        
+        private static string GetStoreProcedureName(string tableName, string op)
+        {
+            return $"{tableName}_{op}_dpa_generated";
         }
 
         private static string MakeStoreProcedureParameter(Dictionary<string, TableType> tableType, List<RepositoryColumn> propertyNames)
@@ -48,6 +53,7 @@ namespace Dpa.Repository.Implements
             for (int i = 0; i < propertyNames.Count; ++i)
             {
                 string propertyName = propertyNames[i].PropertyName.ToUpper();
+                string columnName = propertyNames[i].ColumnName.ToUpper();
                 if (i > 0)
                 {
                     entityProcedureParameter.Append(',');
@@ -56,7 +62,7 @@ namespace Dpa.Repository.Implements
                     .Append('@')
                     .Append(propertyName)
                     .Append(' ')
-                    .Append(tableType[propertyName].ColumnTypeName);
+                    .Append(tableType[columnName].ColumnTypeName);
             }
 
             return entityProcedureParameter.ToString();
@@ -100,7 +106,7 @@ namespace Dpa.Repository.Implements
 
         private static async Task DropAndCreateProcedure(DbConnection connection, string tableName, string storeProcedureParameter, string op, string query)
         {
-            string storeProcedureName = $"{tableName}_{op}_dpa_generated";
+            string storeProcedureName = GetStoreProcedureName(tableName, op);
             using (DbCommand command = connection.CreateCommand())
             {
                 command.CommandText = $"drop proc if exists {storeProcedureName};";
