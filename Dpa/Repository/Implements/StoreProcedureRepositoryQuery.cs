@@ -42,12 +42,12 @@ namespace Dpa.Repository.Implements
             return tableType.ToDictionary(e => e.ColumnName.ToUpper());
         }
 
-        private static string MakeStoreProcedureParameter(Dictionary<string, TableType> tableType, List<string> propertyNames)
+        private static string MakeStoreProcedureParameter(Dictionary<string, TableType> tableType, List<RepositoryColumn> propertyNames)
         {
             StringBuilder entityProcedureParameter = new StringBuilder(200);
             for (int i = 0; i < propertyNames.Count; ++i)
             {
-                string propertyName = propertyNames[i].ToUpper();
+                string propertyName = propertyNames[i].PropertyName.ToUpper();
                 if (i > 0)
                 {
                     entityProcedureParameter.Append(',');
@@ -70,7 +70,7 @@ namespace Dpa.Repository.Implements
 
             if (propertyNameInfo.PrimaryKeyPropertyNames.Count == 1)
             {
-                string pk = propertyNameInfo.PrimaryKeyPropertyNames[0].ToUpper();
+                string pk = propertyNameInfo.PrimaryKeyPropertyNames[0].ColumnName.ToUpper();
                 string idColumnType = tableType[pk].ColumnTypeName;
                 idStoreProcedureParameter = "@id " + idColumnType;
             } 

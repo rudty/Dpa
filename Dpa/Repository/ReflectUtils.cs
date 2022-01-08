@@ -7,15 +7,34 @@ using System.Text;
 
 namespace Dpa.Repository
 {
+    internal readonly struct RepositoryColumn
+    {
+        /// <summary>
+        /// C# property
+        /// </summary>
+        public readonly string PropertyName;
+
+        /// <summary>
+        /// db column
+        /// </summary>
+        public readonly string ColumnName;
+
+        public RepositoryColumn(string propertyName, string columnName)
+        {
+            PropertyName = propertyName;
+            ColumnName = columnName;
+        }
+    }
+
     internal readonly struct RepositoryPropertyNameInfo
     {
         public readonly string TableName;
 
-        public readonly List<string> PrimaryKeyPropertyNames;
+        public readonly List<RepositoryColumn> PrimaryKeyPropertyNames;
 
-        public readonly List<string> PropertyNames;
+        public readonly List<RepositoryColumn> PropertyNames;
 
-        public RepositoryPropertyNameInfo(string tableName, List<string> primaryKeyPropertyName, List<string> propertyNames)
+        public RepositoryPropertyNameInfo(string tableName, List<RepositoryColumn> primaryKeyPropertyName, List<RepositoryColumn> propertyNames)
         {
             TableName = tableName;
             PrimaryKeyPropertyNames = primaryKeyPropertyName;
@@ -25,19 +44,59 @@ namespace Dpa.Repository
 
     internal static class ReflectUtils
     {
+        public static void SetTypeMap(Type type)
+        {
+            Dapper.CustomPropertyTypeMap typeMap = new Dapper.CustomPropertyTypeMap(type, PropertySelector);
+            Dapper.SqlMapper.SetTypeMap(type, typeMap);
+        }
+
+        private static PropertyInfo PropertySelector(Type classType, string columnName)
+        {
+            PropertyInfo[] propertyInfo = classType.GetProperties();
+            for (int i = 0; i < propertyInfo.Length; ++i)
+            {
+                ColumnAttribute columnAttribute = propertyInfo[i].GetCustomAttribute<ColumnAttribute>();
+                if (columnAttribute != null)
+                {
+                    if (columnAttribute.Name == columnName)
+                    {
+                        return propertyInfo[i];
+                    }
+                }
+            }
+
+            for (int i = 0; i < propertyInfo.Length; ++i)
+            {
+                if (propertyInfo[i].Name.ToUpper() == columnName.ToUpper())
+                {
+                    return propertyInfo[i];
+                }
+            }
+
+            return null;
+        }
+
         public static RepositoryPropertyNameInfo GetRepositoryPropertyInfo(Type objectType)
         {
-            List<string> primaryKeyPropertyNames = new List<string>();
-            List<string> propertyNames = new List<string>();
-            foreach (PropertyInfo propertyInfo in objectType.GetProperties())
+            PropertyInfo[] propertyInfos = objectType.GetProperties();
+            List<RepositoryColumn> primaryKeyPropertyNames = new List<RepositoryColumn>(propertyInfos.Length);
+            List<RepositoryColumn> propertyNames = new List<RepositoryColumn>(propertyInfos.Length);
+            foreach (PropertyInfo propertyInfo in propertyInfos)
             {
-                propertyNames.Add(propertyInfo.Name);
-                foreach (CustomAttributeData attributeData in propertyInfo.CustomAttributes)
+                ColumnAttribute columnAttr = propertyInfo.GetCustomAttribute<ColumnAttribute>();
+                string columnName = propertyInfo.Name;
+                if (columnAttr != null)
                 {
-                    if (attributeData.AttributeType == typeof(KeyAttribute))
-                    {
-                        primaryKeyPropertyNames.Add(propertyInfo.Name);
-                    }
+                    columnName = columnAttr.Name;
+                }
+
+                RepositoryColumn column = new RepositoryColumn(propertyInfo.Name, columnName);
+                propertyNames.Add(column);
+
+                KeyAttribute keyAttr = propertyInfo.GetCustomAttribute<KeyAttribute>();
+                if (keyAttr != null)
+                {
+                    primaryKeyPropertyNames.Add(column);
                 }
             }
 

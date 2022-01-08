@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Data;
 using System.Text;
+using System.Reflection;
 
 namespace Dpa.Repository.Implements
 {
@@ -21,7 +22,7 @@ namespace Dpa.Repository.Implements
         public TextRepositoryQuery()
         {
             RepositoryPropertyNameInfo propertyNameInfo = ReflectUtils.GetRepositoryPropertyInfo(typeof(T));
-            string columns = string.Join(',', propertyNameInfo.PropertyNames);
+            string columns = string.Join(',', propertyNameInfo.PropertyNames.Select(p => p.ColumnName));
             string cond = GetCond(propertyNameInfo.PrimaryKeyPropertyNames);
 
             Func<ID, object> idBinder = IRepositoryQuery<T, ID>.GetDefaultIdQueryParameterBinder();
@@ -33,11 +34,11 @@ namespace Dpa.Repository.Implements
             Delete = new QueryAndParameter<ID>(GetDeleteQuery(propertyNameInfo.TableName, cond), idBinder);
         }
 
-        private static string GetCond(List<string> primaryKeyPropertyName)
+        private static string GetCond(List<RepositoryColumn> primaryKeyPropertyName)
         {
             if (primaryKeyPropertyName.Count == 1)
             {
-                return $"where {primaryKeyPropertyName[0]} = @id";
+                return $"where {primaryKeyPropertyName[0].ColumnName} = @id";
             }
 
             StringBuilder builder = new StringBuilder(100);
@@ -48,9 +49,9 @@ namespace Dpa.Repository.Implements
                 {
                     builder.Append(" and ");
                 }
-                builder.Append(primaryKeyPropertyName[i]);
+                builder.Append(primaryKeyPropertyName[i].ColumnName);
                 builder.Append("=@");
-                builder.Append(primaryKeyPropertyName[i]);
+                builder.Append(primaryKeyPropertyName[i].PropertyName);
             }
 
             return builder.ToString();
@@ -60,16 +61,16 @@ namespace Dpa.Repository.Implements
         {
             return $"delete from {tableName} {cond};";
         }
-        private static string GetUpdateQuery(string tableName, List<string> propertyNames, List<string> pkNames)
+        private static string GetUpdateQuery(string tableName, List<RepositoryColumn> propertyNames, List<RepositoryColumn> pkNames)
         {
-            string updateNames = string.Join(',', propertyNames.Select(n => $"{n}=@{n}"));
-            string whereNames = string.Join(" and ", pkNames.Select(n => $"{n}=@{n}"));
+            string updateNames = string.Join(',', propertyNames.Select(n => $"{n.ColumnName}=@{n.PropertyName}"));
+            string whereNames = string.Join(" and ", pkNames.Select(n => $"{n.ColumnName}=@{n.PropertyName}"));
             return $"update {tableName} set {updateNames} where {whereNames};";
         }
 
-        private static string GetInsertQuery(string columns, string tableName, List<string> propertyNames)
+        private static string GetInsertQuery(string columns, string tableName, List<RepositoryColumn> propertyNames)
         {
-            string parameters = "@" + string.Join(",@", propertyNames);
+            string parameters = "@" + string.Join(",@", propertyNames.Select(p => p.PropertyName));
             return $"insert into {tableName}({columns}) values({parameters});";
         }
 

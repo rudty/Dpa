@@ -18,6 +18,7 @@ namespace Dpa.Repository
         public static Task<ICrudRepository<T, ID>> Default<T, ID>(DbConnection dbConnection)
         {
             ICrudRepository<T, ID> instance = new DefaultCrudRepository<T, ID>(dbConnection, new TextRepositoryQuery<T, ID>());
+            ReflectUtils.SetTypeMap(typeof(T));
             return Task.FromResult(instance);
         }
 
@@ -32,6 +33,7 @@ namespace Dpa.Repository
             IStoreProcedureCrudRepository<T, ID> instance = new DefaultCrudRepository<T, ID>(
                 dbConnection, 
                 new StoreProcedureRepositoryQuery<T, ID>());
+            ReflectUtils.SetTypeMap(typeof(T));
             return Task.FromResult(instance);
         }
 
@@ -132,6 +134,7 @@ namespace Dpa.Repository
                 argument = new object[] { dbConnection };
             }
             object instance = Activator.CreateInstance(customType, argument, null);
+            ReflectUtils.SetTypeMap(customType);
             return instance;
         }
 

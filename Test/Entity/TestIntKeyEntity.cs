@@ -1,5 +1,7 @@
 ﻿
 using System;
+using System.Runtime.InteropServices.WindowsRuntime;
+
 namespace Test.Entity
 {
     [System.ComponentModel.DataAnnotations.Schema.Table(TableName)]
@@ -10,12 +12,13 @@ namespace Test.Entity
         public const string CreateTableQuery = @"
 create table " + TableName + @"(
     id int,
-    Value varchar(500)
+    myvalue varchar(500)
 );";
 
         [System.ComponentModel.DataAnnotations.Key]
         public int Id { get; set; }
 
+        [System.ComponentModel.DataAnnotations.Schema.Column("myvalue")]
         public string Value { get; set; }
 
         public TestIntKeyEntity() { }
