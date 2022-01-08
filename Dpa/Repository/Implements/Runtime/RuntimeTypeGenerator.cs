@@ -3,7 +3,7 @@ using System.Reflection.Emit;
 
 namespace Dpa.Repository.Implements.Runtime
 {
-    internal static partial class RuntimeTypeGenerator
+    public static partial class RuntimeTypeGenerator
     {
         private static readonly AssemblyBuilder assemblyBuilder = AssemblyBuilder.DefineDynamicAssembly(
             new AssemblyName("repo_assembly"), 

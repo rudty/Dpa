@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace Dpa.Repository.Implements.Runtime
 {
-    internal static partial class RuntimeTypeGenerator
+    public static partial class RuntimeTypeGenerator
     {
         public static Type Generate(Type baseType, Type generateInterface)
         {
@@ -101,10 +101,7 @@ namespace Dpa.Repository.Implements.Runtime
                 {
                     // object param = new { p1 = arg0, p2 = arg1 };
                     // Execute(connection, "select * from table", param, commandType);
-                    ConstructorParameter[] ctorParams = parameters
-                        .Select(p => new ConstructorParameter(p.Name, p.ParameterType))
-                        .ToArray();
-                    Type anonymousClassType = GenerateParameterAnonymousEntity(ctorParams);
+                    Type anonymousClassType = GenerateParameterAnonymousEntity(parameters);
                     ConstructorInfo anonymousCtor = anonymousClassType.GetConstructors()[0];
 
                     LocalBuilder localAnonymousClass = il.DeclareLocal(anonymousClassType);
