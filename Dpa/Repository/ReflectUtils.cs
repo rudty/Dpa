@@ -46,15 +46,19 @@ namespace Dpa.Repository
 
     internal static class ReflectUtils
     {
-        private const BindingFlags typeMapDefaultBindingFlags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
+        public const BindingFlags TypeMapDefaultBindingFlags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
         private static readonly ConcurrentDictionary<Type, bool> registeredTypeMap = new ConcurrentDictionary<Type, bool>();
+        private static readonly Type[] supportAttributeTypes = new Type[]
+        {
+            typeof(ColumnAttribute),
+            typeof(NotMappedAttribute),
+        };
 
         public static void SetTypeMap(Type type)
         {
             if (registeredTypeMap.TryAdd(type, true))
             {
-                PropertyInfo[] propertyInfo = type.GetProperties(typeMapDefaultBindingFlags);
-                if (propertyInfo.Any(p => p.GetCustomAttribute<ColumnAttribute>() != null))
+                if (HasEntityAttribute(type))
                 {
                     Dapper.CustomPropertyTypeMap typeMap = new Dapper.CustomPropertyTypeMap(type, PropertySelector);
                     Dapper.SqlMapper.SetTypeMap(type, typeMap);
@@ -62,9 +66,33 @@ namespace Dpa.Repository
             }
         }
 
+        public static bool HasEntityAttribute(Type type)
+        {
+            HashSet<Type> attributeTypes = new HashSet<Type>();
+            PropertyInfo[] propertyInfo = type.GetProperties(TypeMapDefaultBindingFlags);
+            foreach (PropertyInfo p in propertyInfo)
+            {
+                object[] attrs = p.GetCustomAttributes(true);
+                foreach (object attr in attrs)
+                {
+                    attributeTypes.Add(attr.GetType());
+                }
+            }
+
+            foreach (Type supportAttrType in supportAttributeTypes)
+            {
+                if (attributeTypes.Contains(supportAttrType))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         private static PropertyInfo PropertySelector(Type classType, string columnName)
         {
-            PropertyInfo[] propertyInfo = classType.GetProperties(typeMapDefaultBindingFlags);
+            PropertyInfo[] propertyInfo = classType.GetProperties(TypeMapDefaultBindingFlags);
             for (int i = 0; i < propertyInfo.Length; ++i)
             {
                 ColumnAttribute columnAttribute = propertyInfo[i].GetCustomAttribute<ColumnAttribute>();
@@ -95,6 +123,12 @@ namespace Dpa.Repository
             List<RepositoryColumn> propertyNames = new List<RepositoryColumn>(propertyInfos.Length);
             foreach (PropertyInfo propertyInfo in propertyInfos)
             {
+                NotMappedAttribute notMappedAttr = propertyInfo.GetCustomAttribute<NotMappedAttribute>();
+                if (notMappedAttr != null)
+                {
+                    continue;
+                }
+
                 ColumnAttribute columnAttr = propertyInfo.GetCustomAttribute<ColumnAttribute>();
                 string columnName = propertyInfo.Name;
                 if (columnAttr != null)

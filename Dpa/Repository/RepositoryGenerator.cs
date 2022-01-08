@@ -131,7 +131,7 @@ namespace Dpa.Repository
                 throw new ArgumentException("interface only");
             }
 
-            Type customType = RuntimeRepositoryGenerator.Generate(baseType, repoType);
+            Type customType = RuntimeTypeGenerator.Generate(baseType, repoType);
             object[] argument;
             if (repositoryQuery != null)
             {

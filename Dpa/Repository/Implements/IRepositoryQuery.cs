@@ -1,6 +1,11 @@
 ﻿
+using Dpa.Repository.Implements.Runtime;
 using System;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Data;
+using System.Linq;
+using System.Reflection;
+using System.Runtime.InteropServices.ComTypes;
 
 namespace Dpa.Repository.Implements
 {
@@ -25,7 +30,21 @@ namespace Dpa.Repository.Implements
 
         public static Func<T, object> GetDefaultEntityQueryParameterBinder()
         {
-            return EntityBinder;
+            Type entityType = typeof(T);
+            if (ReflectUtils.HasEntityAttribute(entityType))
+            {
+                PropertyInfo[] props = entityType
+                    .GetProperties(ReflectUtils.TypeMapDefaultBindingFlags)
+                    .Where(p => p.GetCustomAttribute<NotMappedAttribute>() is null)
+                    .ToArray();
+
+                return RuntimeTypeGenerator.CreateFunctionClonePropertyAnonymousEntity<T>(props);
+                
+            }
+            else
+            {
+                return EntityBinder;
+            }
         }
 
         private static object EntityBinder<E>(E value)

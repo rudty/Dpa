@@ -7,15 +7,11 @@ using System.Reflection;
 using System.Reflection.Emit;
 using System.Threading;
 using System.Threading.Tasks;
+
 namespace Dpa.Repository.Implements.Runtime
 {
-    public class RuntimeRepositoryGenerator
+    internal static partial class RuntimeTypeGenerator
     {
-        private static readonly AssemblyBuilder assemblyBuilder = AssemblyBuilder.DefineDynamicAssembly(new AssemblyName("repo_assembly"), AssemblyBuilderAccess.Run);
-        private static readonly ModuleBuilder moduleBuilder = assemblyBuilder.DefineDynamicModule("repoModule");
-
-        private static int generateCount = 0;
-
         public static Type Generate(Type baseType, Type generateInterface)
         {
             Type buildType;
@@ -34,87 +30,6 @@ namespace Dpa.Repository.Implements.Runtime
 
             return buildType;
         }
-
-        /// <summary>
-        ///  class Anonymous_generate_1 {
-        ///     public int m_a;
-        ///     public int m_b;
-        ///     
-        ///     public int a { get { return this.m_a } }
-        ///     public int b { get { return this.m_b } }
-        ///
-        ///     public Anonymous_generate_1(int a, int b) {
-        ///         this.m_a = a;
-        ///         this.m_b = b;
-        ///     }
-        ///  }
-        /// </summary>
-        private static Type GenerateParameterAnonymousEntity(ParameterInfo[] parameters)
-        {
-            const string memberPrefix = "m_";
-            const string getterMethodPrefix = "get_";
-            int gen = Interlocked.Increment(ref generateCount);
-
-            TypeBuilder typeBuilder = moduleBuilder.DefineType("Anonymous_generate" + gen);
-            FieldBuilder[] fields = new FieldBuilder[parameters.Length];
-
-            for (int i = 0; i < parameters.Length; ++i)
-            {
-                // int m_value;
-                // int value { get; }
-                // int get_value() { return this.m_value; } <- 이게 위에 프로퍼티에서 get; 
-
-                fields[i] = typeBuilder.DefineField(
-                    memberPrefix + parameters[i].Name, 
-                    parameters[i].ParameterType, 
-                    FieldAttributes.Public);
-
-                PropertyBuilder property = typeBuilder.DefineProperty(
-                    parameters[i].Name,
-                    PropertyAttributes.HasDefault,
-                    parameters[i].ParameterType,
-                    null);
-
-                MethodBuilder propertyGetter = typeBuilder.DefineMethod(
-                    getterMethodPrefix + parameters[i].Name, 
-                    MethodAttributes.Public, 
-                    parameters[i].ParameterType, 
-                    null);
-
-                ILGenerator gil = propertyGetter.GetILGenerator();
-                gil.Emit(OpCodes.Ldarg_0);
-                gil.Emit(OpCodes.Ldfld, fields[i]);
-                gil.Emit(OpCodes.Ret);
-
-                property.SetGetMethod(propertyGetter);
-            }
-
-            ConstructorBuilder ctor = typeBuilder.DefineConstructor(
-                MethodAttributes.Public,
-                CallingConventions.Standard, 
-                parameters.Select(e => e.ParameterType).ToArray());
-
-
-            ILGenerator il = ctor.GetILGenerator();
-
-            for (int i = 0; i < parameters.Length; ++i)
-            {
-                // this.field[i] = arg[i]
-                il.Emit(OpCodes.Ldarg_0);
-                il.Emit(OpCodes.Ldarg, i + 1);
-                il.Emit(OpCodes.Stfld, fields[i]);
-            }
-
-            il.Emit(OpCodes.Ret);
-
-            for (int i = 0; i < parameters.Length; ++i)
-            {
-                ctor.DefineParameter(i + 1, ParameterAttributes.In, parameters[i].Name);
-            }
-
-            return typeBuilder.CreateType();
-        }
-
 
         /// <summary>
         /// call base(this, arg1, ...);
@@ -186,7 +101,10 @@ namespace Dpa.Repository.Implements.Runtime
                 {
                     // object param = new { p1 = arg0, p2 = arg1 };
                     // Execute(connection, "select * from table", param, commandType);
-                    Type anonymousClassType = GenerateParameterAnonymousEntity(parameters);
+                    ConstructorParameter[] ctorParams = parameters
+                        .Select(p => new ConstructorParameter(p.Name, p.ParameterType))
+                        .ToArray();
+                    Type anonymousClassType = GenerateParameterAnonymousEntity(ctorParams);
                     ConstructorInfo anonymousCtor = anonymousClassType.GetConstructors()[0];
 
                     LocalBuilder localAnonymousClass = il.DeclareLocal(anonymousClassType);
@@ -210,7 +128,7 @@ namespace Dpa.Repository.Implements.Runtime
         }
 
         private const BindingFlags findMethodFlags = BindingFlags.Public | BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Instance;
-        private static readonly Type myType = typeof(RuntimeRepositoryGenerator);
+        private static readonly Type myType = typeof(RuntimeTypeGenerator);
         private static readonly MethodInfo dapperExecuteMethod = myType.GetMethod("DapperExecute", findMethodFlags);
         private static readonly MethodInfo dapperQueryMethod = myType.GetMethod("DapperQuery", findMethodFlags);
         private static readonly MethodInfo dapperQueryMethod_object = dapperQueryMethod.MakeGenericMethod(typeof(object));

@@ -21,6 +21,10 @@ create table " + TableName + @"(
         [System.ComponentModel.DataAnnotations.Schema.Column("myvalue")]
         public string Value { get; set; }
 
+
+        [System.ComponentModel.DataAnnotations.Schema.NotMapped]
+        public int NotMappedValue { get; set; } = 333;
+
         public TestIntKeyEntity() { }
 
         public TestIntKeyEntity(int id, string value)
