@@ -1,14 +1,11 @@
 ﻿using System;
 using Xunit;
 using Dpa.Repository;
-using Microsoft.Data.Sqlite;
-using System.Data.Common;
 using System.Threading.Tasks;
 using Test.Entity;
-using System.Data.SqlClient;
 using System.Collections.Generic;
-using System.Linq;
 using System.Data;
+using Test.Helper;
 
 namespace Test
 {
@@ -17,195 +14,141 @@ namespace Test
         public DateTime NowDate { get; set; }
     }
 
-    public class SysTables
+    public interface ISpDatabase
     {
-        public string type_desc { get; set; }
-        public int object_id { get; set; }
-    }
-
-    public class ParamObject
-    {
-        public int A { get; set; }
-
-        public int B { get; set; }
-
-        public string C { get; set; }
-
-        // override object.Equals
-        public override bool Equals(object obj)
+        public class SpDatabaseResult
         {
-
-            if (obj == null || GetType() != obj.GetType())
-            {
-                return false;
-            }
-
-            ParamObject other = (ParamObject)obj;
-            return other.A == A && other.B == B && other.C == C;
+            public string DATABASE_NAME;
+            public int DATABASE_SIZE;
+            public int REMARKS;
         }
 
-        // override object.GetHashCode
-        public override int GetHashCode()
-        {
-            // TODO: write your implementation of GetHashCode() here
-            return base.GetHashCode();
-        }
+        Task<IEnumerable<SpDatabaseResult>> sp_databases();
     }
 
-    public interface IHello
+    public interface ISpDatabase_value_tuple
     {
-        [Query("select * from " + TestIntKeyEntity.TableName + " where id = @id")]
-        Task<TestIntKeyEntity> GetHello(int id);
+        Task<IEnumerable<(string DATABASE_NAME, int DATABASE_SIZE, int REMARKS)>> sp_databases();
 
+        [Query("sp_databases", CommandType.StoredProcedure)]
+        Task<(string DATABASE_NAME, int DATABASE_SIZE, int REMARKS)> sp_databases_first();
+    }
+
+    public interface IGetDate
+    {
+        [Query("#CustomTestDateProcedure", CommandType.StoredProcedure)]
         Task<MyDateTime> CustomTestDateProcedure();
-
-        Task<List<SysTables>> CustomTestTableSysTablesProcedure(string tablename);
-
-        Task<ParamObject> CustomObjectParams(ParamObject o);
-
-        Task UpdateTestIntEntity(TestIntKeyEntity e);
     }
 
-    [Collection("sqlserver")]
-    public class CustomTest : IClassFixture<SqlServerDatabaseFixture>
+    public interface IIntRepository
     {
-        private DbConnection connection;
+        [Query("insert into " + TestIntKeyEntity.TableName + " values(@Id, @Value);")]
+        Task AddEntity(TestIntKeyEntity entity);
 
-        public CustomTest(SqlServerDatabaseFixture fixture)
-        {
-            this.connection = fixture.SqlServerConnection;
-        }
+        [Query("insert into " + TestIntKeyEntity.TableName + " values(@Id, '2');")]
+        Task AddKeyAnd2(TestIntKeyEntity entity);
 
+        [Query("select * from " + TestIntKeyEntity.TableName + " where id = @id;")]
+        Task<TestIntKeyEntity> GetEntity(int id);
+    }
+
+    public class CustomTest : SqlServerTestClass
+    {
         [Fact]
         public async Task Create()
         {
-            var repo = await RepositoryGenerator.Custom<IHello>(connection);
+            var repo = await RepositoryGenerator.Custom<IIntRepository>(connection);
             Assert.NotNull(repo);
         }
 
         [Fact]
         public async Task SelectHello1()
         {
-            var repo = await RepositoryGenerator.Custom<IHello>(connection);
-            var entity = await repo.GetHello(1);
+            var repo = await RepositoryGenerator.Custom<IIntRepository>(connection);
+            await repo.AddEntity(new TestIntKeyEntity(1, "a"));
+            await repo.AddEntity(new TestIntKeyEntity(2, "b"));
+            await repo.AddEntity(new TestIntKeyEntity(3, "c"));
+
+            var entity = await repo.GetEntity(1);
             Assert.Equal(new TestIntKeyEntity(1, "a"), entity);
 
-            entity = await repo.GetHello(2);
+            entity = await repo.GetEntity(2);
             Assert.Equal(new TestIntKeyEntity(2, "b"), entity);
 
-            entity = await repo.GetHello(3);
+            entity = await repo.GetEntity(3);
             Assert.Equal(new TestIntKeyEntity(3, "c"), entity);
+        }
+
+        [Fact]
+        public async Task SelectHello2()
+        {
+            var repo = await RepositoryGenerator.Custom<IIntRepository>(connection);
+            await repo.AddKeyAnd2(new TestIntKeyEntity(1, "a"));
+            await repo.AddKeyAnd2(new TestIntKeyEntity(2, "b"));
+            await repo.AddKeyAnd2(new TestIntKeyEntity(3, "c"));
+
+            var entity = await repo.GetEntity(1);
+            Assert.Equal(new TestIntKeyEntity(1, "2"), entity);
+
+            entity = await repo.GetEntity(2);
+            Assert.Equal(new TestIntKeyEntity(2, "2"), entity);
+
+            entity = await repo.GetEntity(3);
+            Assert.Equal(new TestIntKeyEntity(3, "2"), entity);
         }
 
         [Fact]
         public async Task GetDateProcedure()
         {
             var cmd = connection.CreateCommand();
-            cmd.CommandText = @"drop proc if exists CustomTestDateProcedure;";
-            cmd.ExecuteNonQuery();
-
             cmd.CommandText = @"
-create proc CustomTestDateProcedure
+create proc #CustomTestDateProcedure
 as
 begin
 select getdate() as [NowDate]
 end";
-            cmd.ExecuteNonQuery();
+            await cmd.ExecuteNonQueryAsync();
 
             cmd.Dispose();
 
-            var repo = await RepositoryGenerator.Custom<IHello>(connection);
+            var repo = await RepositoryGenerator.Custom<IGetDate>(connection);
             var r = await repo.CustomTestDateProcedure();
             Assert.True(r.NowDate.Ticks > 0);
         }
 
         [Fact]
-        public async Task SysTable()
+        public async Task SpDatabases_struct()
         {
-            using (var cmd = connection.CreateCommand())
+            var repo = await RepositoryGenerator.Custom<ISpDatabase>(connection);
+            var r = await repo.sp_databases();
+            Assert.NotEmpty(r);
+            foreach (var db in r)
             {
-                cmd.CommandText = @"drop proc if exists CustomTestTableSysTablesProcedure;";
-                cmd.ExecuteNonQuery();
-
-                cmd.CommandText = @"
-create proc CustomTestTableSysTablesProcedure
-@tablename varchar(max)
-as
-begin
-select type_desc, object_id from sys.tables where [name] = @tablename;
-end";
-                cmd.ExecuteNonQuery();
+                Assert.NotEmpty(db.DATABASE_NAME);
+                Assert.True(db.DATABASE_SIZE > 0);
             }
-
-            var repo = await RepositoryGenerator.Custom<IHello>(connection);
-            List<SysTables> r = await repo.CustomTestTableSysTablesProcedure("inttable");
-            var firstResult = r.First();
-            Assert.True(firstResult.object_id > 0);
-            Assert.False(string.IsNullOrEmpty(firstResult.type_desc));
         }
 
         [Fact]
-        public async Task ObjectParameter()
+        public async Task SpDatabases_list_tuple()
         {
-            using (var cmd = connection.CreateCommand())
+            var repo = await RepositoryGenerator.Custom<ISpDatabase_value_tuple>(connection);
+            var r = await repo.sp_databases();
+            Assert.NotEmpty(r);
+            foreach (var db in r)
             {
-                cmd.CommandText = "drop proc if exists CustomObjectParams;";
-                cmd.ExecuteNonQuery();
-
-                cmd.CommandText = $@"
-create proc CustomObjectParams
-@a int,
-@b int,
-@c varchar(max)
-as
-begin
-select (@a + 1) as [A], (@b + 1) as [B], (@c + 'c') as [C];
-end";
-                cmd.ExecuteNonQuery();
+                Assert.NotEmpty(db.DATABASE_NAME);
+                Assert.True(db.DATABASE_SIZE > 0);
             }
-
-            var repo = await RepositoryGenerator.Custom<IHello>(connection);
-            var p = new ParamObject()
-            {
-                A = 3,
-                B = 2,
-                C = "ab",
-            };
-            var r = await repo.CustomObjectParams(p);
-            Assert.Equal(new ParamObject()
-            {
-                A = 4,
-                B = 3,
-                C = "abc",
-            }, r);
         }
 
         [Fact]
-        public async Task Update()
+        public async Task SpDatabases_first_tuple()
         {
-            using (var cmd = connection.CreateCommand())
-            {
-                cmd.CommandText = "drop proc if exists UpdateTestIntEntity;";
-                cmd.ExecuteNonQuery();
-
-                cmd.CommandText = $@"
-create proc UpdateTestIntEntity
-@id int,
-@value varchar(max)
-as
-begin
-    update inttable set [value] = @value where [id] = @id;
-end";
-                cmd.ExecuteNonQuery();
-            }
-
-            TestIntKeyEntity update = new TestIntKeyEntity(13, "ZZZZ");
-            IHello repo = await RepositoryGenerator.Custom<IHello>(connection);
-            await repo.UpdateTestIntEntity(update);
-
-            TestIntKeyEntity findEntity = TestIntKeyEntity.SelectEntityFirst(connection, 13);
-
-            Assert.Equal(update, findEntity);
+            var repo = await RepositoryGenerator.Custom<ISpDatabase_value_tuple>(connection);
+            var db = await repo.sp_databases_first();
+            Assert.NotEmpty(db.DATABASE_NAME);
+            Assert.True(db.DATABASE_SIZE > 0);
         }
     }
 }

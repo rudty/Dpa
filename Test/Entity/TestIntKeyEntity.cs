@@ -1,19 +1,16 @@
 ﻿
-using System.Collections.Generic;
-using System.Data.Common;
-using System.Linq;
-
+using System;
 namespace Test.Entity
 {
     [System.ComponentModel.DataAnnotations.Schema.Table(TableName)]
-    public class TestIntKeyEntity
+    public class TestIntKeyEntity : IComparable<TestIntKeyEntity>
     {
-        public  const string TableName = "inttable";
+        public const string TableName = "[#inttable]";
 
-        public const string SqliteCreateTableQuery = @"
+        public const string CreateTableQuery = @"
 create table " + TableName + @"(
     id int,
-    Value text
+    Value varchar(500)
 );";
 
         [System.ComponentModel.DataAnnotations.Key]
@@ -44,25 +41,14 @@ create table " + TableName + @"(
         {
             return Id;
         }
-
-        public static TestIntKeyEntity SelectEntityFirst(DbConnection connection, int id)
+        public int CompareTo(TestIntKeyEntity other)
         {
-            return SelectEntity(connection, id).First();
-        }
-
-        public static List<TestIntKeyEntity> SelectEntity(DbConnection connection, params int[] id)
-        {
-            using DbCommand cmd = connection.CreateCommand();
-            cmd.CommandText = $"select id, value from {TableName} where id in ({string.Join(',', id)});";
-            DbDataReader reader = cmd.ExecuteReader();
-
-            List<TestIntKeyEntity> r = new List<TestIntKeyEntity>();
-            while (reader.Read())
+            if (Id != other.Id)
             {
-                r.Add(new TestIntKeyEntity(reader.GetInt32(0), reader.GetString(1)));
+                return Id.CompareTo(other.Id);
             }
 
-            return r;
+            return Value.CompareTo(other.Value);
         }
     }
 }
