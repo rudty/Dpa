@@ -94,7 +94,8 @@ namespace Dpa.Repository.Implements.Runtime
                     il.Emit(OpCodes.Ldstr, sqlQuery);
                     il.Emit(OpCodes.Ldarg_1);
 
-                    if (ReflectUtils.HasEntityAttribute(entityType))
+                    if (commandType == CommandType.StoredProcedure && 
+                        ReflectUtils.HasEntityAttribute(entityType))
                     {
                         // Execute(connection, "select * from table", new {
                         // A = param.A, B = param.B
@@ -116,18 +117,14 @@ namespace Dpa.Repository.Implements.Runtime
                     Type anonymousClassType = GenerateAnonymousEntityFromParameter(parameters);
                     ConstructorInfo anonymousCtor = anonymousClassType.GetConstructors()[0];
 
-                    LocalBuilder localAnonymousClass = il.DeclareLocal(anonymousClassType);
+                    il.Emit(OpCodes.Ldarg_0);
+                    il.Emit(OpCodes.Ldfld, connectionField);
+                    il.Emit(OpCodes.Ldstr, sqlQuery);
                     for (int i = 0; i < parameters.Length; ++i)
                     {
                         il.Emit(OpCodes.Ldarg, i + 1);
                     }
                     il.Emit(OpCodes.Newobj, anonymousCtor);
-                    il.Emit(OpCodes.Stloc, localAnonymousClass);
-
-                    il.Emit(OpCodes.Ldarg_0);
-                    il.Emit(OpCodes.Ldfld, connectionField);
-                    il.Emit(OpCodes.Ldstr, sqlQuery);
-                    il.Emit(OpCodes.Ldloc, localAnonymousClass);
                     il.Emit(OpCodes.Ldc_I4, (int)commandType);
                     il.Emit(OpCodes.Call, callMethod);
 
