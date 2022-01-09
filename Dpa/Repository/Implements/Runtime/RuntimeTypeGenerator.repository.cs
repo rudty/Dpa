@@ -103,6 +103,10 @@ namespace Dpa.Repository.Implements.Runtime
                         Type newType = GenerateAnonymousEntityFromEntity(entityType);
                         ConstructorInfo ctor = newType.GetConstructors()[0];
                         il.Emit(OpCodes.Newobj, ctor);
+                    } 
+                    else if (entityType.IsValueType)
+                    {
+                        il.Emit(OpCodes.Box, entityType);
                     }
 
                     il.Emit(OpCodes.Ldc_I4, (int)commandType);
@@ -179,15 +183,11 @@ namespace Dpa.Repository.Implements.Runtime
 
             Type firstType = parameters[0].ParameterType;
 
-            if (firstType.IsValueType)
-            {
-                return false;
-            }
-
             if (ReflectUtils.IsPrimitiveLike(firstType))
             {
                 return false;
             }
+
             return true;
         }
         public static Task DapperExecute(DbConnection connection, string sql, object param, System.Data.CommandType commandType)

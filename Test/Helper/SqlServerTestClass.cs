@@ -4,32 +4,37 @@ using System.Data.Common;
 using System.Data.SqlClient;
 using System.Threading.Tasks;
 using Test.Entity;
+using Xunit;
 
 namespace Test.Helper
 {
-    public class SqlServerTestClass : IDisposable
+    public class SqlServerTestClass : IAsyncLifetime
     {
         protected DbConnection connection { get; }
 
         protected SqlServerTestClass()
         {
-            connection = new SqlConnection("server=localhost;Integrated Security=SSPI; database=test; MultipleActiveResultSets=true;");
+            connection = new SqlConnection("server=localhost;Integrated Security=SSPI; database=tempdb; MultipleActiveResultSets=true;");
             connection.Open();
-
-            DbCommand cmd = connection.CreateCommand();
-
-            cmd.CommandText = TestIntKeyEntity.CreateTableQuery;
-            cmd.ExecuteNonQuery();
-
-            cmd.CommandText = TestMultiKeyEntity.CreateTableQuery;
-            cmd.ExecuteNonQuery();
 
             Dapper.SqlMapper.AddTypeMap(typeof(string), System.Data.DbType.AnsiString);
         }
 
-        public void Dispose()
+        async Task IAsyncLifetime.InitializeAsync()
         {
-            connection.Close();
+            using (DbCommand cmd = connection.CreateCommand())
+            {
+                cmd.CommandText = TestIntKeyEntity.CreateTableQuery;
+                await cmd.ExecuteNonQueryAsync();
+
+                cmd.CommandText = TestMultiKeyEntity.CreateTableQuery;
+                await cmd.ExecuteNonQueryAsync();
+            }
+        }
+
+        Task IAsyncLifetime.DisposeAsync()
+        {
+            return connection.CloseAsync();
         }
     }
 }

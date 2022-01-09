@@ -1,11 +1,13 @@
 ﻿using Microsoft.Data.Sqlite;
 using System;
 using System.Data.Common;
+using System.Threading.Tasks;
 using Test.Entity;
+using Xunit;
 
 namespace Test.Helper
 {
-    public class SqliteTestClass : IDisposable
+    public class SqliteTestClass : IAsyncLifetime
     {
         protected DbConnection connection;
 
@@ -13,19 +15,23 @@ namespace Test.Helper
         {
             connection = new SqliteConnection(@"Data Source=:memory:");
             connection.Open();
-
-            DbCommand cmd = connection.CreateCommand();
-
-            cmd.CommandText = TestIntKeyEntity.CreateTableQuery;
-            cmd.ExecuteNonQuery();
-
-            cmd.CommandText = TestMultiKeyEntity.CreateTableQuery;
-            cmd.ExecuteNonQuery();
         }
 
-        public void Dispose()
+        async Task IAsyncLifetime.InitializeAsync()
         {
-            connection.Dispose();
+            using (DbCommand cmd = connection.CreateCommand())
+            {
+                cmd.CommandText = TestIntKeyEntity.CreateTableQuery;
+                await cmd.ExecuteNonQueryAsync();
+
+                cmd.CommandText = TestMultiKeyEntity.CreateTableQuery;
+                await cmd.ExecuteNonQueryAsync();
+            }
+        }
+
+        Task IAsyncLifetime.DisposeAsync()
+        {
+            return connection.CloseAsync();
         }
     }
 }
