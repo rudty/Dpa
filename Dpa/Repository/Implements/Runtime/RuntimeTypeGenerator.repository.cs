@@ -14,8 +14,6 @@ namespace Dpa.Repository.Implements.Runtime
     {
         public static Type Generate(Type baseType, Type generateInterface)
         {
-            Type buildType;
-  
             int gen = Interlocked.Increment(ref generateCount);
 
             TypeBuilder typeBuilder = moduleBuilder.DefineType(
@@ -26,7 +24,14 @@ namespace Dpa.Repository.Implements.Runtime
 
             GenerateConstructor(typeBuilder, baseType);
             GenerateMethod(typeBuilder, generateInterface);
-            buildType = typeBuilder.CreateType();
+
+            Type[] baseInterfaces = generateInterface.GetInterfaces();
+            foreach (Type baseInterface in baseInterfaces)
+            {
+                GenerateMethod(typeBuilder, baseInterface);
+            }
+
+            Type buildType = typeBuilder.CreateType();
 
             return buildType;
         }
