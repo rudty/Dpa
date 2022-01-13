@@ -103,22 +103,20 @@ namespace Dpa.Repository
 
         public static bool HasEntityAttribute(Type type)
         {
-            HashSet<Type> attributeTypes = new HashSet<Type>();
             PropertyInfo[] propertyInfo = type.GetProperties(TypeMapDefaultBindingFlags);
             foreach (PropertyInfo p in propertyInfo)
             {
                 object[] attrs = p.GetCustomAttributes(true);
                 foreach (object attr in attrs)
                 {
-                    attributeTypes.Add(attr.GetType());
-                }
-            }
-
-            foreach (Type supportAttrType in supportAttributeTypes)
-            {
-                if (attributeTypes.Contains(supportAttrType))
-                {
-                    return true;
+                    Type attrType = attr.GetType();
+                    foreach (Type supportAttrType in supportAttributeTypes)
+                    {
+                        if (attrType == supportAttrType)
+                        {
+                            return true;
+                        }
+                    }
                 }
             }
 
@@ -223,7 +221,12 @@ namespace Dpa.Repository
                         typeName.Append(',');
                     }
 
-                    typeName.Append(GetFullName(genericArguments[i]));
+                    StringBuilder argName = GetReflectName(
+                        genericArguments[i], 
+                        getName, 
+                        beginGeneric, 
+                        endGeneric);
+                    typeName.Append(argName);
                 }
                 typeName.Append(endGeneric);
 
