@@ -61,6 +61,7 @@ namespace Dpa.Repository.Implements.Runtime
         public static void GenerateMethod(TypeBuilder typeBuilder, Type interfaceType)
         {
             FieldInfo connectionField = BaseRepository.ConnectionField;
+            string interfaceName = ReflectUtils.GetFullName(interfaceType);
 
             foreach (var method in interfaceType.GetMethods())
             {
@@ -83,10 +84,14 @@ namespace Dpa.Repository.Implements.Runtime
 
                 MethodInfo callMethod = FindCallMethod(methodReturnType);
 
-                MethodBuilder methodBuilder = typeBuilder.DefineMethod(method.Name,
-                    MethodAttributes.Public | MethodAttributes.Virtual | MethodAttributes.Final,
+                MethodBuilder methodBuilder = typeBuilder.DefineMethod(interfaceName + "." + method.Name,
+                    MethodAttributes.Private | MethodAttributes.HideBySig |
+                    MethodAttributes.NewSlot | MethodAttributes.Virtual |
+                    MethodAttributes.Final,
                     methodReturnType,
                     methodParamTypes);
+
+                typeBuilder.DefineMethodOverride(methodBuilder, method);
 
                 ILGenerator il = methodBuilder.GetILGenerator(256);
                 ParameterInfo[] parameters = method.GetParameters();
