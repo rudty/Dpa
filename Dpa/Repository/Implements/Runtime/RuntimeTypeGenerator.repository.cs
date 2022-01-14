@@ -26,8 +26,21 @@ namespace Dpa.Repository.Implements.Runtime
             GenerateMethod(typeBuilder, generateInterface);
 
             Type[] baseInterfaces = generateInterface.GetInterfaces();
+            Type crudType = typeof(ICrudRepository<,>);
             foreach (Type baseInterface in baseInterfaces)
             {
+                if (baseInterface.IsGenericType)
+                {
+                    Type[] argType = baseInterface.GetGenericArguments();
+                    if (argType.Length == 2)
+                    {
+                        if (crudType.MakeGenericType(argType).IsAssignableFrom(baseInterface))
+                        {
+                            continue;
+                        }
+                    }
+                }
+
                 GenerateMethod(typeBuilder, baseInterface);
             }
 
