@@ -1,9 +1,9 @@
-﻿using System;
+﻿using Dapper;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Linq;
 using System.Reflection;
 using System.Text;
 
@@ -47,24 +47,11 @@ namespace Dpa.Repository
     internal static class ReflectUtils
     {
         public const BindingFlags TypeMapDefaultBindingFlags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
-        private static readonly ConcurrentDictionary<Type, bool> registeredTypeMap = new ConcurrentDictionary<Type, bool>();
         private static readonly Type[] supportAttributeTypes = new Type[]
         {
             typeof(ColumnAttribute),
             typeof(NotMappedAttribute),
         };
-
-        public static void SetTypeMap(Type type)
-        {
-            if (registeredTypeMap.TryAdd(type, true))
-            {
-                if (HasEntityAttribute(type))
-                {
-                    Dapper.CustomPropertyTypeMap typeMap = new Dapper.CustomPropertyTypeMap(type, PropertySelector);
-                    Dapper.SqlMapper.SetTypeMap(type, typeMap);
-                }
-            }
-        }
 
         public static bool IsPrimitiveLike(Type t)
         {
@@ -121,32 +108,6 @@ namespace Dpa.Repository
             }
 
             return false;
-        }
-
-        private static PropertyInfo PropertySelector(Type classType, string columnName)
-        {
-            PropertyInfo[] propertyInfo = classType.GetProperties(TypeMapDefaultBindingFlags);
-            for (int i = 0; i < propertyInfo.Length; ++i)
-            {
-                ColumnAttribute columnAttribute = propertyInfo[i].GetCustomAttribute<ColumnAttribute>();
-                if (columnAttribute != null)
-                {
-                    if (columnAttribute.Name == columnName)
-                    {
-                        return propertyInfo[i];
-                    }
-                }
-            }
-
-            for (int i = 0; i < propertyInfo.Length; ++i)
-            {
-                if (propertyInfo[i].Name.ToUpper() == columnName.ToUpper())
-                {
-                    return propertyInfo[i];
-                }
-            }
-
-            return null;
         }
 
         public static RepositoryPropertyNameInfo GetRepositoryPropertyInfo(Type objectType)

@@ -6,6 +6,9 @@ using Test.Entity;
 using System.Collections.Generic;
 using System.Data;
 using Test.Helper;
+using System.Data.SqlClient;
+using System.Runtime.InteropServices;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Test
 {
@@ -18,9 +21,9 @@ namespace Test
     {
         public class SpDatabaseResult
         {
-            public string DATABASE_NAME;
-            public int DATABASE_SIZE;
-            public int REMARKS;
+            public string DATABASE_NAME { get; set; }
+            public int DATABASE_SIZE { get; set; }
+            public int REMARKS { get; set; }
         }
 
         Task<IEnumerable<SpDatabaseResult>> sp_databases();
@@ -174,6 +177,66 @@ end";
             var entity = new TestIntKeyEntity(99, "vvvv");
             TestIntKeyEntity r = await repo.SelectMe(entity);
             Console.WriteLine(r);
+        }
+
+        public interface IAA
+        {
+            Task<(string, string)> sp_tables();
+        }
+
+        public interface IBB
+        {
+            Task<string> sp_helptext(string objname);
+        }
+
+        public interface ICC : IAA, IBB
+        {
+            Task<(string, string)> sp_stored_procedures();
+        }
+
+        public interface IDD : IAA { }
+
+        public interface IEE : IDD, IBB { }
+
+        public interface IFF : IEE
+        {
+            Task<List<(string, string)>> sp_stored_procedures();
+        }
+
+        [Fact]
+        public async Task CreateExtend()
+        {
+            var repo = await RepositoryGenerator.Custom<ICC>(connection);
+            var repo2 = await RepositoryGenerator.Custom<IFF>(connection);
+        }
+
+        [Fact]
+        public async Task Extends2()
+        {
+            var repo = await RepositoryGenerator.Custom<ICC>(connection);
+            var r0 = await repo.sp_stored_procedures();
+            Assert.False(string.IsNullOrEmpty(r0.Item1));
+            Assert.False(string.IsNullOrEmpty(r0.Item2));
+
+            var r1 = await repo.sp_helptext("sp_helptext");
+            Assert.False(string.IsNullOrEmpty(r1));
+        }
+
+        [Fact]
+        public async Task ExtendsExtends()
+        {
+            var repo = await RepositoryGenerator.Custom<IFF>(connection);
+            var r0 = await repo.sp_stored_procedures();
+            Assert.NotEmpty(r0);
+
+            foreach (var e in r0)
+            {
+                Assert.False(string.IsNullOrEmpty(e.Item1));
+                Assert.False(string.IsNullOrEmpty(e.Item2));
+            }
+
+            var r1 = await repo.sp_helptext("sp_helptext");
+            Assert.False(string.IsNullOrEmpty(r1));
         }
     }
 }

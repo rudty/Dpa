@@ -18,7 +18,6 @@ namespace Dpa.Repository
         public static Task<ICrudRepository<T, ID>> Default<T, ID>(DbConnection dbConnection)
         {
             ICrudRepository<T, ID> instance = new DefaultCrudRepository<T, ID>(dbConnection, new TextRepositoryQuery<T, ID>());
-            ReflectUtils.SetTypeMap(typeof(T));
             return Task.FromResult(instance);
         }
 
@@ -33,7 +32,6 @@ namespace Dpa.Repository
             IStoreProcedureCrudRepository<T, ID> instance = new DefaultCrudRepository<T, ID>(
                 dbConnection, 
                 new StoreProcedureRepositoryQuery<T, ID>());
-            ReflectUtils.SetTypeMap(typeof(T));
             return Task.FromResult(instance);
         }
 
@@ -94,8 +92,6 @@ namespace Dpa.Repository
             if ((baseImplementRepositoryType = repoType.GetInterface(typeof(IStoreProcedureCrudRepository<,>).Name)) != null) 
             {
                 Type[] genericArgumentTypes = baseImplementRepositoryType.GetGenericArguments();
-                Type entityType = genericArgumentTypes[0]; // <T, ID>
-                ReflectUtils.SetTypeMap(entityType);
 
                 baseType = typeof(DefaultCrudRepository<,>).MakeGenericType(genericArgumentTypes);
                 Type repositoryQueryType = typeof(StoreProcedureRepositoryQuery<,>)
@@ -105,8 +101,6 @@ namespace Dpa.Repository
             else if ((baseImplementRepositoryType = repoType.GetInterface(typeof(ICrudRepository<,>).Name)) != null)
             {
                 Type[] genericArgumentTypes = baseImplementRepositoryType.GetGenericArguments();
-                Type entityType = genericArgumentTypes[0]; // <T, ID>
-                ReflectUtils.SetTypeMap(entityType);
 
                 baseType = typeof(DefaultCrudRepository<,>)
                     .MakeGenericType(genericArgumentTypes);

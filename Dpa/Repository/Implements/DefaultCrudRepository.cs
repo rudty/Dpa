@@ -1,4 +1,4 @@
-﻿using Dpa.Repository.Implements.Runtime;
+﻿using Dpa.Repository.Implements.Types;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
@@ -14,6 +14,7 @@ namespace Dpa.Repository.Implements
         public DefaultCrudRepository(DbConnection connection, IRepositoryQuery<T, ID> repositoryQuery)
             : base(connection)
         {
+            TypeMapper.SetType(typeof(T));
             this.repositoryQuery = repositoryQuery;
         }
 
