@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Data.Common;
 using System.Threading.Tasks;
 
 namespace Dpa.Repository
@@ -16,55 +17,55 @@ namespace Dpa.Repository
         /// </summary>
         /// <param name="id">아이디</param>
         /// <returns>row를 매핑</returns>
-        Task<T> SelectRow(ID id);
+        Task<T> SelectRow(ID id, DbTransaction transaction = null);
 
         /// <summary>
         /// id를 찾고 모두 가져옵니다
         /// </summary>
         /// <param name="id">아이디</param>
         /// <returns>row를 매핑</returns>
-        Task<IReadOnlyCollection<T>> Select(ID id);
+        Task<IReadOnlyCollection<T>> Select(ID id, DbTransaction transaction = null);
 
         /// <summary>
         /// entity 1개를 넣습니다
         /// </summary>
         /// <param name="value">넣을 값</param>
         /// <returns>rows affected</returns>
-        Task<int> InsertRow(T value);
+        Task<int> InsertRow(T value, DbTransaction transaction = null);
 
         /// <summary>
         /// entity 여러개를 넣습니다
         /// </summary>
         /// <param name="value">넣을 값</param>
         /// <returns>rows affected</returns>
-        Task<int> Insert(IEnumerable<T> values);
+        Task<int> Insert(IEnumerable<T> values, DbTransaction transaction = null);
 
         /// <summary>
         /// entity를 수정합니다
         /// </summary>
         /// <param name="value">수정하는 값</param>
         /// <returns>rows affected</returns>
-        Task<int> UpdateRow(T value);
+        Task<int> UpdateRow(T value, DbTransaction transaction = null);
 
         /// <summary>
         /// entity를 수정합니다
         /// </summary>
         /// <param name="values">수정하는 값</param>
         /// <returns>rows affected</returns>
-        Task<int> Update(IEnumerable<T> values);
+        Task<int> Update(IEnumerable<T> values, DbTransaction transaction = null);
 
         /// <summary>
         /// entity를 삭제합니다
         /// </summary>
         /// <param name="value">삭제하는 값</param>
         /// <returns>rows affected</returns>
-        Task<int> DeleteRow(ID value);
+        Task<int> DeleteRow(ID value, DbTransaction transaction = null);
 
         /// <summary>
         /// entity를 삭제합니다
         /// </summary>
         /// <param name="values">삭제하는 값</param>
         /// <returns>rows affected</returns>
-        Task<int> Delete(IEnumerable<ID> values);
+        Task<int> Delete(IEnumerable<ID> values, DbTransaction transaction = null);
     }
 }

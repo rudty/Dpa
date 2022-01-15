@@ -28,21 +28,53 @@ namespace Dpa.Repository.Implements
             return q.EnsureStoreProcedure(connection);
         }
 
-        Task<T> ICrudRepository<T, ID>.SelectRow(ID id)
+        Task<int> ICrudRepository<T, ID>.InsertRow(T value, DbTransaction transaction)
+        {
+            return ExecuteInternal(repositoryQuery.Insert, value, transaction);
+        }
+
+        Task<int> ICrudRepository<T, ID>.Insert(IEnumerable<T> values, DbTransaction transaction)
+        {
+            return ExecuteInternal(repositoryQuery.Insert, values, transaction);
+        }
+
+        Task<int> ICrudRepository<T, ID>.UpdateRow(T value, DbTransaction transaction)
+        {
+            return ExecuteInternal(repositoryQuery.Update, value, transaction);
+        }
+
+        Task<int> ICrudRepository<T, ID>.Update(IEnumerable<T> values, DbTransaction transaction)
+        {
+            return ExecuteInternal(repositoryQuery.Update, values, transaction);
+        }
+
+        Task<int> ICrudRepository<T, ID>.DeleteRow(ID id, DbTransaction transaction)
+        {
+            return ExecuteInternal(repositoryQuery.Delete, id, transaction);
+        }
+
+        Task<int> ICrudRepository<T, ID>.Delete(IEnumerable<ID> values, DbTransaction transaction)
+        {
+            return ExecuteInternal(repositoryQuery.Delete, values, transaction);
+        }
+
+        Task<T> ICrudRepository<T, ID>.SelectRow(ID id, DbTransaction transaction)
         {
             return Dapper.SqlMapper.QueryFirstOrDefaultAsync<T>(
-                connection, 
-                repositoryQuery.Select.query, 
-                repositoryQuery.Select.parameterBinder(id), 
+                connection,
+                repositoryQuery.Select.query,
+                repositoryQuery.Select.parameterBinder(id),
+                transaction,
                 commandType: repositoryQuery.CommandType);
         }
 
-        async Task<IReadOnlyCollection<T>> ICrudRepository<T, ID>.Select(ID id)
+        async Task<IReadOnlyCollection<T>> ICrudRepository<T, ID>.Select(ID id, DbTransaction transaction)
         {
             IEnumerable<T> r = await Dapper.SqlMapper.QueryAsync<T>(
-                connection, 
-                repositoryQuery.Select.query, 
-                repositoryQuery.Select.parameterBinder(id), 
+                connection,
+                repositoryQuery.Select.query,
+                repositoryQuery.Select.parameterBinder(id),
+                transaction,
                 commandType: repositoryQuery.CommandType).ConfigureAwait(false);
 
             if (r is IReadOnlyCollection<T> c)
@@ -53,53 +85,25 @@ namespace Dpa.Repository.Implements
             return r.ToList();
         }
 
-        Task<int> ICrudRepository<T, ID>.InsertRow(T value)
+        private Task<int> ExecuteInternal<E>(QueryAndParameter<E> queryAndParameter, E value, DbTransaction transaction)
         {
-            return ExecuteInternal(repositoryQuery.Insert, value);
-        }
-
-        Task<int> ICrudRepository<T, ID>.Insert(IEnumerable<T> values)
-        {
-            return ExecuteInternal(repositoryQuery.Insert, values);
-        }
-
-        Task<int> ICrudRepository<T, ID>.UpdateRow(T value)
-        {
-            return ExecuteInternal(repositoryQuery.Update, value);
-        }
-
-        Task<int> ICrudRepository<T, ID>.Update(IEnumerable<T> values)
-        {
-            return ExecuteInternal(repositoryQuery.Update, values);
-        }
-
-        Task<int> ICrudRepository<T, ID>.DeleteRow(ID id)
-        {
-            return ExecuteInternal(repositoryQuery.Delete, id);
-        }
-
-        Task<int> ICrudRepository<T, ID>.Delete(IEnumerable<ID> values)
-        {
-            return ExecuteInternal(repositoryQuery.Delete, values);
-        }
-
-        private async Task<int> ExecuteInternal<E>(QueryAndParameter<E> queryAndParameter, E value)
-        {
-            return await Dapper.SqlMapper.ExecuteAsync(
+            return Dapper.SqlMapper.ExecuteAsync(
                         connection,
                         sql: queryAndParameter.query,
-                        param: queryAndParameter.parameterBinder(value), 
-                        commandType: repositoryQuery.CommandType).ConfigureAwait(false);
+                        param: queryAndParameter.parameterBinder(value),
+                        transaction,
+                        commandType: repositoryQuery.CommandType);
         }
 
 
-        private async Task<int> ExecuteInternal<E>(QueryAndParameter<E> queryAndParameter, IEnumerable<E> values)
+        private Task<int> ExecuteInternal<E>(QueryAndParameter<E> queryAndParameter, IEnumerable<E> values, DbTransaction transaction)
         {
-            return await Dapper.SqlMapper.ExecuteAsync(
+            return Dapper.SqlMapper.ExecuteAsync(
                   connection,
                   sql: queryAndParameter.query,
                   param: values.Select(queryAndParameter.parameterBinder),
-                  commandType: repositoryQuery.CommandType).ConfigureAwait(false);
+                  transaction,
+                  commandType: repositoryQuery.CommandType);
          }
     }
 }

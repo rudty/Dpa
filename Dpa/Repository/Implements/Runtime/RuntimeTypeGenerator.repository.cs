@@ -108,22 +108,34 @@ namespace Dpa.Repository.Implements.Runtime
                 typeBuilder.DefineMethodOverride(methodBuilder, method);
 
                 ILGenerator il = methodBuilder.GetILGenerator(256);
-                ParameterInfo[] parameters = method.GetParameters();
-                if (IsEntityParameter(parameters))
-                {
-                    Type entityType = parameters[0].ParameterType;
-                    // Execute(connection, "select * from table", (param), commandType);
-                    il.Emit(OpCodes.Ldarg_0);
-                    il.Emit(OpCodes.Ldfld, connectionField);
-                    il.Emit(OpCodes.Ldstr, sqlQuery);
-                    il.Emit(OpCodes.Ldarg_1);
+                il.Emit(OpCodes.Ldarg_0);
+                il.Emit(OpCodes.Ldfld, connectionField);
+                il.Emit(OpCodes.Ldstr, sqlQuery); 
+                il.Emit(OpCodes.Ldc_I4, (int)commandType);
 
+                MethodParameters parameters = new MethodParameters(method);
+                if (parameters.TransactionPosition > -1)
+                {
+                    il.Emit(OpCodes.Ldarg, parameters.TransactionPosition + 1);
+                } 
+                else
+                {
+                    il.Emit(OpCodes.Ldnull);
+                }
+
+                int entityPosition = parameters.EntityParameterPosition;
+                if (entityPosition > -1)
+                {
+                    // Execute(connection, "select * from table", commandType, (param));
+                    il.Emit(OpCodes.Ldarg, entityPosition + 1);
+
+                    Type entityType = parameters[entityPosition].ParameterType;
                     if (commandType == CommandType.StoredProcedure && 
                         ReflectUtils.HasEntityAttribute(entityType))
                     {
-                        // Execute(connection, "select * from table", new {
+                        // Execute(connection, "select * from table", commandType, new {
                         // A = param.A, B = param.B
-                        // }, commandType);
+                        // });
                         Type newType = GenerateAnonymousEntityFromEntity(entityType);
                         ConstructorInfo ctor = newType.GetConstructors()[0];
                         il.Emit(OpCodes.Newobj, ctor);
@@ -132,32 +144,145 @@ namespace Dpa.Repository.Implements.Runtime
                     {
                         il.Emit(OpCodes.Box, entityType);
                     }
-
-                    il.Emit(OpCodes.Ldc_I4, (int)commandType);
-                    il.Emit(OpCodes.Call, callMethod);
-
-                    il.Emit(OpCodes.Ret);
                 }
                 else
                 {
                     // object param = new { p1 = arg0, p2 = arg1 };
-                    // Execute(connection, "select * from table", param, commandType);
-                    Type anonymousClassType = GenerateAnonymousEntityFromParameter(parameters);
+                    // Execute(connection, "select * from table", commandType, param);
+                    Type anonymousClassType = GenerateAnonymousEntityFromParameter(parameters.QueryParameters);
                     ConstructorInfo anonymousCtor = anonymousClassType.GetConstructors()[0];
-
-                    il.Emit(OpCodes.Ldarg_0);
-                    il.Emit(OpCodes.Ldfld, connectionField);
-                    il.Emit(OpCodes.Ldstr, sqlQuery);
                     for (int i = 0; i < parameters.Length; ++i)
                     {
+                        if (i == parameters.TransactionPosition)
+                        {
+                            continue;
+                        }
+
                         il.Emit(OpCodes.Ldarg, i + 1);
                     }
                     il.Emit(OpCodes.Newobj, anonymousCtor);
-                    il.Emit(OpCodes.Ldc_I4, (int)commandType);
-                    il.Emit(OpCodes.Call, callMethod);
-
-                    il.Emit(OpCodes.Ret); 
                 }
+
+                il.Emit(OpCodes.Call, callMethod);
+                il.Emit(OpCodes.Ret);
+            }
+        }
+
+        private struct MethodParameters
+        {
+            /// <summary>
+            /// 전체 파라메터들
+            /// </summary>
+            public readonly ParameterInfo[] Parameters;
+
+            /// <summary>
+            /// IDbTransaction 을 제외한 파라메터들
+            /// </summary>
+            public readonly ParameterInfo[] QueryParameters;
+
+            /// <summary>
+            /// IDbTransaction 시그니처 위치
+            /// </summary>
+            public readonly int TransactionPosition;
+
+            /// <summary>
+            /// Entity 의 시그니처 위치
+            /// </summary>
+            public readonly int EntityParameterPosition;
+
+            /// <summary>
+            /// 시그니처 파라메터 수 (= Parameters.Length)
+            /// </summary>
+            public readonly int Length;
+
+            public MethodParameters(MethodInfo methodInfo)
+            {
+                this.Parameters = methodInfo.GetParameters();
+
+                int transactionPosition = -1;
+                for (int i = 0; i < Parameters.Length; ++i)
+                {
+                    if (typeof(IDbTransaction).IsAssignableFrom(Parameters[i].ParameterType))
+                    {
+                        transactionPosition = i;
+                    }
+                }
+                
+                TransactionPosition = transactionPosition;
+                Length = Parameters.Length;
+                QueryParameters = GetQueryparameters(Parameters, TransactionPosition);
+                EntityParameterPosition = GetEntityPosition(Parameters, TransactionPosition);
+            }
+
+            public ParameterInfo this[int index]
+            {
+                get => Parameters[index];
+            }
+
+            private static ParameterInfo[] GetQueryparameters(ParameterInfo[] parameters, int transactionPosition)
+            {
+                if (transactionPosition == -1)
+                {
+                    return parameters;
+                }
+
+                ParameterInfo[] queryParameters = new ParameterInfo[parameters.Length - 1];
+                for (int i = 0, p_i = 0; i < parameters.Length; ++i)
+                {
+                    if (i == transactionPosition)
+                    {
+                        continue;
+                    }
+
+                    queryParameters[p_i] = parameters[i];
+                    p_i += 1;
+                }
+                return queryParameters;
+            }
+
+            private static int GetEntityPosition(ParameterInfo[] parameters, int transactionPosition)
+            {
+                int maybeEntityPosition;
+                switch (parameters.Length)
+                {
+                    default:
+                        return -1;    
+                    case 1:
+                        if (transactionPosition > 0)
+                        {
+                            /* func(IDbTransaction tran)*/
+                            return -1;
+                        }
+                        else
+                        {
+                            /* func(Entity entity)*/
+                            maybeEntityPosition = 0;
+                        }
+                        break;
+                    case 2:
+                        if (transactionPosition == -1)
+                        {
+                            /* func(Entity entity, Entity2 entity)*/
+                            return -1;
+                        }
+                        else if (transactionPosition == 0)
+                        {
+                            /* func(IDbTransaction tran, Entity entity)*/
+                            maybeEntityPosition = 1;
+                        }
+                        else
+                        {
+                            maybeEntityPosition = 0;
+                        }
+                        break;
+                }
+
+                if (ReflectUtils.IsPrimitiveLike(parameters[maybeEntityPosition].ParameterType))
+                {
+                    return -1;
+                }
+
+                return maybeEntityPosition;
             }
         }
 
@@ -198,35 +323,19 @@ namespace Dpa.Repository.Implements.Runtime
             return dapperQueryFirstMethod.MakeGenericMethod(taskResultType);
         }
 
-        private static bool IsEntityParameter(ParameterInfo[] parameters)
+        public static Task DapperExecute(DbConnection connection, string sql, System.Data.CommandType commandType, IDbTransaction transaction, object param)
         {
-            if (parameters.Length != 1)
-            {
-                return false;
-            }
-
-            Type firstType = parameters[0].ParameterType;
-
-            if (ReflectUtils.IsPrimitiveLike(firstType))
-            {
-                return false;
-            }
-
-            return true;
-        }
-        public static Task DapperExecute(DbConnection connection, string sql, object param, System.Data.CommandType commandType)
-        {
-            return Dapper.SqlMapper.ExecuteAsync(connection, sql, param, commandType: commandType);
+            return Dapper.SqlMapper.ExecuteAsync(connection, sql, param, transaction, commandType: commandType);
         }
 
-        public static Task<IEnumerable<E>> DapperQuery<E>(DbConnection connection, string sql, object param, System.Data.CommandType commandType)
+        public static Task<IEnumerable<E>> DapperQuery<E>(DbConnection connection, string sql, System.Data.CommandType commandType, IDbTransaction transaction, object param)
         {
-            return Dapper.SqlMapper.QueryAsync<E>(connection, sql, param, commandType: commandType);
+            return Dapper.SqlMapper.QueryAsync<E>(connection, sql, param, transaction, commandType: commandType);
         }
 
-        public static Task<E> DapperQueryFirst<E>(DbConnection connection, string sql, object param, System.Data.CommandType commandType)
+        public static Task<E> DapperQueryFirst<E>(DbConnection connection, string sql, System.Data.CommandType commandType, IDbTransaction transaction, object param)
         {
-            return Dapper.SqlMapper.QueryFirstOrDefaultAsync<E>(connection, sql, param, commandType: commandType);
+            return Dapper.SqlMapper.QueryFirstOrDefaultAsync<E>(connection, sql, param, transaction, commandType: commandType);
         }
     }
 }
