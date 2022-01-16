@@ -18,8 +18,8 @@ namespace Dpa.Repository.Implements
         CommandType CommandType { get; }
 
         public static Func<ID, object> GetDefaultIdQueryParameterBinder()
-        {
-            if (ReflectUtils.IsPrimitiveLike(typeof(ID)))
+        { 
+            if (ReflectUtils.IsDbTypeExists(typeof(ID)))
             {
                 return IdBinder;
             }

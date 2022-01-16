@@ -1,6 +1,4 @@
-﻿using Dapper;
-using System;
-using System.Collections.Concurrent;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -53,39 +51,20 @@ namespace Dpa.Repository
             typeof(NotMappedAttribute),
         };
 
-        public static bool IsPrimitiveLike(Type t)
+        public static bool IsDbTypeExists(Type t)
         {
-            if (t.IsPrimitive)
+#pragma warning disable CS0618
+            try
             {
-                return true;
+                if (Dapper.SqlMapper.LookupDbType(t, "_", true, out Dapper.SqlMapper.ITypeHandler _) != null)
+                {
+                    return true;
+                }
             }
-
-            if (t == typeof(string))
-            {
-                return true;
-            }
-
-            if (t == typeof(DateTime))
-            {
-                return true;
-            }
-
-            if (t == typeof(TimeSpan))
-            {
-                return true;
-            }
-
-            if (t == typeof(System.Numerics.BigInteger))
-            {
-                return true;
-            }
-
-            if (t == typeof(decimal))
-            {
-                return true;
-            }
+            catch (System.NotSupportedException) { }
 
             return false;
+#pragma warning restore CS0618
         }
 
         public static bool HasEntityAttribute(Type type)

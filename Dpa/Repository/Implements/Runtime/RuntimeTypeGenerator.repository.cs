@@ -217,7 +217,7 @@ namespace Dpa.Repository.Implements.Runtime
                 Length = parameters.Length;
 
                 if (QueryParameters.Count == 1 && 
-                    false == ReflectUtils.IsPrimitiveLike(QueryParameters[0].ParameterType))
+                    false == ReflectUtils.IsDbTypeExists(QueryParameters[0].ParameterType))
                 {
                     EntityParameter = QueryParameters[0];
                 }
