@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 using System.Reflection;
@@ -29,13 +30,13 @@ namespace Dpa.Repository.Implements.Runtime
         /// <param name="props">프로퍼티를 만들 목록/param>
         /// <param name="fn">이름과 실제 타입을 반환</param>
         /// <return>생성된 field 정보</return>
-        private static FieldBuilder[] DefineProperty<T>(TypeBuilder typeBuilder, T[] props, Func<T, NameAndType> fn)
+        private static FieldBuilder[] DefineProperty<T>(TypeBuilder typeBuilder, IReadOnlyList<T> props, Func<T, NameAndType> fn)
         {
             const string memberPrefix = "m_";
             const string getterMethodPrefix = "get_";
-            FieldBuilder[] fields = new FieldBuilder[props.Length];
+            FieldBuilder[] fields = new FieldBuilder[props.Count];
 
-            for (int i = 0; i < props.Length; ++i)
+            for (int i = 0; i < props.Count; ++i)
             {
                 // int m_value;
                 // int value { get; }
@@ -87,10 +88,10 @@ namespace Dpa.Repository.Implements.Runtime
         /// </summary>
         public static Type GenerateAnonymousEntityFromEntity(Type entityType)
         {
-            PropertyInfo[] properties = entityType
+            IReadOnlyList<PropertyInfo> properties = entityType
                 .GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
                 .Where(p => p.GetCustomAttribute<NotMappedAttribute>() is null)
-                .ToArray();
+                .ToList();
 
             int gen = Interlocked.Increment(ref generateCount);
 
@@ -107,7 +108,7 @@ namespace Dpa.Repository.Implements.Runtime
 
             ILGenerator il = ctor.GetILGenerator();
 
-            for (int i = 0; i < properties.Length; ++i)
+            for (int i = 0; i < properties.Count; ++i)
             {
                 MethodInfo getter = properties[i].GetGetMethod(nonPublic: true);
                 // this.field[i] = arg[i]
@@ -138,7 +139,7 @@ namespace Dpa.Repository.Implements.Runtime
         ///     }
         ///  }
         /// </summary>
-        public static Type GenerateAnonymousEntityFromParameter(ParameterInfo[] parameters)
+        public static Type GenerateAnonymousEntityFromParameter(IReadOnlyList<ParameterInfo> parameters)
         {
             int gen = Interlocked.Increment(ref generateCount);
 
@@ -156,7 +157,7 @@ namespace Dpa.Repository.Implements.Runtime
 
             ILGenerator il = ctor.GetILGenerator();
 
-            for (int i = 0; i < parameters.Length; ++i)
+            for (int i = 0; i < parameters.Count; ++i)
             {
                 // this.field[i] = arg[i]
                 il.Emit(OpCodes.Ldarg_0);
@@ -166,7 +167,7 @@ namespace Dpa.Repository.Implements.Runtime
 
             il.Emit(OpCodes.Ret);
 
-            for (int i = 0; i < parameters.Length; ++i)
+            for (int i = 0; i < parameters.Count; ++i)
             {
                 ctor.DefineParameter(i + 1, ParameterAttributes.In, parameters[i].Name);
             }

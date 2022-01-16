@@ -7,7 +7,7 @@ using ColumnName = System.String;
 
 namespace Dpa.Repository.Implements.Types
 {
-    public class TypeMapper
+    internal class TypeMapper
     {
         public const BindingFlags TypeMapDefaultBindingFlags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
         private static readonly ConcurrentDictionary<Type, bool> registeredTypeMap = new ConcurrentDictionary<Type, bool>();

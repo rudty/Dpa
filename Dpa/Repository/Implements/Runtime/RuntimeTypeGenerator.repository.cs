@@ -1,13 +1,10 @@
-﻿using Dpa.Repository.Implements.Types;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Data;
-using System.Data.Common;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace Dpa.Repository.Implements.Runtime
 {
@@ -96,7 +93,7 @@ namespace Dpa.Repository.Implements.Runtime
                     commandType = queryAttribute.CommandType;
                 }
 
-                MethodInfo callMethod = FindCallMethod(methodReturnType);
+                MethodInfo callMethod = DapperMethod.FindCallMethod(methodReturnType);
 
                 MethodBuilder methodBuilder = typeBuilder.DefineMethod(interfaceName + "." + method.Name,
                     MethodAttributes.Private | MethodAttributes.HideBySig |
@@ -114,22 +111,22 @@ namespace Dpa.Repository.Implements.Runtime
                 il.Emit(OpCodes.Ldc_I4, (int)commandType);
 
                 MethodParameters parameters = new MethodParameters(method);
-                if (parameters.TransactionPosition > -1)
+                if (parameters.TransactionParameter != null)
                 {
-                    il.Emit(OpCodes.Ldarg, parameters.TransactionPosition + 1);
+                    il.Emit(OpCodes.Ldarg, parameters.TransactionParameter.Position + 1);
                 } 
                 else
                 {
                     il.Emit(OpCodes.Ldnull);
                 }
 
-                int entityPosition = parameters.EntityParameterPosition;
-                if (entityPosition > -1)
+                ParameterInfo entityParameter = parameters.EntityParameter;
+                if (entityParameter != null)
                 {
                     // Execute(connection, "select * from table", commandType, (param));
-                    il.Emit(OpCodes.Ldarg, entityPosition + 1);
+                    il.Emit(OpCodes.Ldarg, entityParameter.Position + 1);
 
-                    Type entityType = parameters[entityPosition].ParameterType;
+                    Type entityType = entityParameter.ParameterType;
                     if (commandType == CommandType.StoredProcedure && 
                         ReflectUtils.HasEntityAttribute(entityType))
                     {
@@ -151,14 +148,9 @@ namespace Dpa.Repository.Implements.Runtime
                     // Execute(connection, "select * from table", commandType, param);
                     Type anonymousClassType = GenerateAnonymousEntityFromParameter(parameters.QueryParameters);
                     ConstructorInfo anonymousCtor = anonymousClassType.GetConstructors()[0];
-                    for (int i = 0; i < parameters.Length; ++i)
+                    foreach (ParameterInfo queryParameter in parameters.QueryParameters)
                     {
-                        if (i == parameters.TransactionPosition)
-                        {
-                            continue;
-                        }
-
-                        il.Emit(OpCodes.Ldarg, i + 1);
+                        il.Emit(OpCodes.Ldarg, queryParameter.Position + 1);
                     }
                     il.Emit(OpCodes.Newobj, anonymousCtor);
                 }
@@ -173,22 +165,22 @@ namespace Dpa.Repository.Implements.Runtime
             /// <summary>
             /// 전체 파라메터들
             /// </summary>
-            public readonly ParameterInfo[] Parameters;
+            public readonly List<ParameterInfo> Parameters;
 
             /// <summary>
             /// IDbTransaction 을 제외한 파라메터들
             /// </summary>
-            public readonly ParameterInfo[] QueryParameters;
+            public readonly List<ParameterInfo> QueryParameters;
 
             /// <summary>
-            /// IDbTransaction 시그니처 위치
+            /// IDbTransaction 파라메터
             /// </summary>
-            public readonly int TransactionPosition;
+            public readonly ParameterInfo TransactionParameter;
 
             /// <summary>
-            /// Entity 의 시그니처 위치
+            /// Entity 의 파라메터
             /// </summary>
-            public readonly int EntityParameterPosition;
+            public readonly ParameterInfo EntityParameter;
 
             /// <summary>
             /// 시그니처 파라메터 수 (= Parameters.Length)
@@ -197,145 +189,48 @@ namespace Dpa.Repository.Implements.Runtime
 
             public MethodParameters(MethodInfo methodInfo)
             {
-                this.Parameters = methodInfo.GetParameters();
+                ParameterInfo[] parameters = methodInfo.GetParameters();
+                this.QueryParameters = new List<ParameterInfo>(parameters.Length);
+                this.Parameters = new List<ParameterInfo>(parameters.Length);
 
-                int transactionPosition = -1;
-                for (int i = 0; i < Parameters.Length; ++i)
+                ParameterInfo transactionParameter = null;
+                foreach (ParameterInfo parameterInfo in parameters)
                 {
-                    if (typeof(IDbTransaction).IsAssignableFrom(Parameters[i].ParameterType))
+                    Parameters.Add(parameterInfo);
+
+                    if (typeof(IDbTransaction).IsAssignableFrom(parameterInfo.ParameterType))
                     {
-                        transactionPosition = i;
+                        if (transactionParameter != null)
+                        {
+                            throw new ArgumentException("number of transaction parameters must be 1");
+                        } 
+
+                        transactionParameter = parameterInfo;
+                    }
+                    else
+                    {
+                        QueryParameters.Add(parameterInfo);
                     }
                 }
                 
-                TransactionPosition = transactionPosition;
-                Length = Parameters.Length;
-                QueryParameters = GetQueryparameters(Parameters, TransactionPosition);
-                EntityParameterPosition = GetEntityPosition(Parameters, TransactionPosition);
+                TransactionParameter = transactionParameter;
+                Length = parameters.Length;
+
+                if (QueryParameters.Count == 1 && 
+                    false == ReflectUtils.IsPrimitiveLike(QueryParameters[0].ParameterType))
+                {
+                    EntityParameter = QueryParameters[0];
+                }
+                else
+                {
+                    EntityParameter = null;
+                }
             }
 
             public ParameterInfo this[int index]
             {
                 get => Parameters[index];
             }
-
-            private static ParameterInfo[] GetQueryparameters(ParameterInfo[] parameters, int transactionPosition)
-            {
-                if (transactionPosition == -1)
-                {
-                    return parameters;
-                }
-
-                ParameterInfo[] queryParameters = new ParameterInfo[parameters.Length - 1];
-                for (int i = 0, p_i = 0; i < parameters.Length; ++i)
-                {
-                    if (i == transactionPosition)
-                    {
-                        continue;
-                    }
-
-                    queryParameters[p_i] = parameters[i];
-                    p_i += 1;
-                }
-                return queryParameters;
-            }
-
-            private static int GetEntityPosition(ParameterInfo[] parameters, int transactionPosition)
-            {
-                int maybeEntityPosition;
-                switch (parameters.Length)
-                {
-                    default:
-                        return -1;    
-                    case 1:
-                        if (transactionPosition > 0)
-                        {
-                            /* func(IDbTransaction tran)*/
-                            return -1;
-                        }
-                        else
-                        {
-                            /* func(Entity entity)*/
-                            maybeEntityPosition = 0;
-                        }
-                        break;
-                    case 2:
-                        if (transactionPosition == -1)
-                        {
-                            /* func(Entity entity, Entity2 entity)*/
-                            return -1;
-                        }
-                        else if (transactionPosition == 0)
-                        {
-                            /* func(IDbTransaction tran, Entity entity)*/
-                            maybeEntityPosition = 1;
-                        }
-                        else
-                        {
-                            maybeEntityPosition = 0;
-                        }
-                        break;
-                }
-
-                if (ReflectUtils.IsPrimitiveLike(parameters[maybeEntityPosition].ParameterType))
-                {
-                    return -1;
-                }
-
-                return maybeEntityPosition;
-            }
-        }
-
-        private const BindingFlags findMethodFlags = BindingFlags.Public | BindingFlags.Static | BindingFlags.NonPublic | BindingFlags.Instance;
-        private static readonly Type myType = typeof(RuntimeTypeGenerator);
-        private static readonly MethodInfo dapperExecuteMethod = myType.GetMethod("DapperExecute", findMethodFlags);
-        private static readonly MethodInfo dapperQueryMethod = myType.GetMethod("DapperQuery", findMethodFlags);
-        private static readonly MethodInfo dapperQueryMethod_object = dapperQueryMethod.MakeGenericMethod(typeof(object));
-        private static readonly MethodInfo dapperQueryFirstMethod = myType.GetMethod("DapperQueryFirst", findMethodFlags);
-
-        private static MethodInfo FindCallMethod(Type t)
-        {
-            if (t == typeof(Task))
-            {
-                return dapperExecuteMethod;
-            }
-
-            // Task<T>
-            Type taskResultType = t.GetGenericArguments()[0];
-            if (taskResultType.IsGenericType)
-            {
-                Type firstGenericArgmentType = taskResultType.GetGenericArguments()[0];
-                if (typeof(System.Collections.Generic.IEnumerable<>)
-                    .MakeGenericType(firstGenericArgmentType)
-                    .IsAssignableFrom(taskResultType))
-                {
-                    TypeMapper.SetType(firstGenericArgmentType);
-                    return dapperQueryMethod.MakeGenericMethod(firstGenericArgmentType);
-                }
-            }
-
-            if (typeof(System.Collections.IEnumerable).IsAssignableFrom(taskResultType))
-            {
-                return dapperQueryMethod_object;
-            }
-
-            TypeMapper.SetType(taskResultType);
-            return dapperQueryFirstMethod.MakeGenericMethod(taskResultType);
-        }
-
-        public static Task DapperExecute(DbConnection connection, string sql, System.Data.CommandType commandType, IDbTransaction transaction, object param)
-        {
-            return Dapper.SqlMapper.ExecuteAsync(connection, sql, param, transaction, commandType: commandType);
-        }
-
-        public static Task<IEnumerable<E>> DapperQuery<E>(DbConnection connection, string sql, System.Data.CommandType commandType, IDbTransaction transaction, object param)
-        {
-            return Dapper.SqlMapper.QueryAsync<E>(connection, sql, param, transaction, commandType: commandType);
-        }
-
-        public static Task<E> DapperQueryFirst<E>(DbConnection connection, string sql, System.Data.CommandType commandType, IDbTransaction transaction, object param)
-        {
-            return Dapper.SqlMapper.QueryFirstOrDefaultAsync<E>(connection, sql, param, transaction, commandType: commandType);
         }
     }
 }
