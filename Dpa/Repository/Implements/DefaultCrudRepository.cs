@@ -14,7 +14,8 @@ namespace Dpa.Repository.Implements
         public DefaultCrudRepository(DbConnection connection, IRepositoryQuery<T, ID> repositoryQuery)
             : base(connection)
         {
-            TypeMapper.SetType(typeof(T));
+            TypeMap.SetType(typeof(T));
+            TypeMap.SetType(typeof(ID));
             this.repositoryQuery = repositoryQuery;
         }
 
