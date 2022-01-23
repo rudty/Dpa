@@ -82,12 +82,12 @@ namespace Dpa.Repository.Implements.Runtime
             return fields;
         }
 
-        public static FieldBuilder[] DefineFieldAndGetProperty(this TypeBuilder typeBuilder, IReadOnlyList<PropertyInfo> props)
+        public static FieldBuilder[] DefineFieldAndProperty(this TypeBuilder typeBuilder, IReadOnlyList<PropertyInfo> props)
         {
             return DefineProperty(typeBuilder, props, NameAndType.New);
         }
 
-        public static FieldBuilder[] DefineFieldAndGetProperty(this TypeBuilder typeBuilder, IReadOnlyList<ParameterInfo> props)
+        public static FieldBuilder[] DefineFieldAndProperty(this TypeBuilder typeBuilder, IReadOnlyList<ParameterInfo> props)
         {
             return DefineProperty(typeBuilder, props, NameAndType.New);
         }

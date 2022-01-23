@@ -35,7 +35,7 @@ namespace Dpa.Repository.Implements.Runtime
             int gen = Interlocked.Increment(ref generateCount);
 
             TypeBuilder typeBuilder = moduleBuilder.DefineType("Anonymous_generate_e" + gen);
-            FieldBuilder[] fields = typeBuilder.DefineFieldAndGetProperty(properties);
+            FieldBuilder[] fields = typeBuilder.DefineFieldAndProperty(properties);
 
             ConstructorBuilder ctor = typeBuilder.DefineConstructor(
                 MethodAttributes.Public,
@@ -80,12 +80,12 @@ namespace Dpa.Repository.Implements.Runtime
             int gen = Interlocked.Increment(ref generateCount);
 
             TypeBuilder typeBuilder = moduleBuilder.DefineType("Anonymous_generate_p" + gen);
-            FieldBuilder[] fields = typeBuilder.DefineFieldAndGetProperty(parameters);
+            FieldBuilder[] fields = typeBuilder.DefineFieldAndProperty(parameters);
 
             ConstructorBuilder ctor = typeBuilder.DefineConstructor(
                 MethodAttributes.Public,
                 CallingConventions.Standard,
-                parameters.Select(e => e.ParameterType).ToArray());
+                fields.Select(e => e.FieldType).ToArray());
 
 
             ILGenerator il = ctor.GetILGenerator();
@@ -96,14 +96,11 @@ namespace Dpa.Repository.Implements.Runtime
                 il.Emit(OpCodes.Ldarg_0);
                 il.Emit(OpCodes.Ldarg, i + 1);
                 il.Emit(OpCodes.Stfld, fields[i]);
+
+                ctor.DefineParameter(i + 1, ParameterAttributes.In, parameters[i].Name);
             }
 
             il.Emit(OpCodes.Ret);
-
-            for (int i = 0; i < parameters.Count; ++i)
-            {
-                ctor.DefineParameter(i + 1, ParameterAttributes.In, parameters[i].Name);
-            }
 
             return typeBuilder.CreateType();
         }
