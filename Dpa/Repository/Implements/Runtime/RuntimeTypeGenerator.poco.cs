@@ -10,68 +10,7 @@ namespace Dpa.Repository.Implements.Runtime
 {
     public static partial class RuntimeTypeGenerator
     {
-        private readonly struct NameAndType
-        {
-            public readonly string Name;
-            public readonly Type Type;
-
-            public NameAndType(string name, Type type)
-            {
-                Name = name;
-                Type = type;
-            }
-        }
-
-        /// <summary>
-        /// reflection 에서 기반 클래스가 없어서 함수로 제작
-        /// </summary>
-        /// <typeparam name="T">type/name을 가지고있는것 PropertyInfo나 ParameterInfo<</typeparam>
-        /// <param name="typeBuilder">builder</param>
-        /// <param name="props">프로퍼티를 만들 목록/param>
-        /// <param name="fn">이름과 실제 타입을 반환</param>
-        /// <return>생성된 field 정보</return>
-        private static FieldBuilder[] DefineProperty<T>(TypeBuilder typeBuilder, IReadOnlyList<T> props, Func<T, NameAndType> fn)
-        {
-            const string memberPrefix = "m_";
-            const string getterMethodPrefix = "get_";
-            FieldBuilder[] fields = new FieldBuilder[props.Count];
-
-            for (int i = 0; i < props.Count; ++i)
-            {
-                // int m_value;
-                // int value { get; }
-                // int get_value() { return this.m_value; } <- 이게 위에 프로퍼티에서 get; 
-
-                NameAndType np = fn(props[i]);
-
-                fields[i] = typeBuilder.DefineField(
-                    memberPrefix + np.Name,
-                    np.Type,
-                    FieldAttributes.Public);
-
-                PropertyBuilder property = typeBuilder.DefineProperty(
-                    np.Name,
-                    PropertyAttributes.HasDefault,
-                    np.Type,
-                    null);
-
-                MethodBuilder propertyGetter = typeBuilder.DefineMethod(
-                    getterMethodPrefix + np.Name,
-                    MethodAttributes.Public,
-                    np.Type,
-                    null);
-
-                ILGenerator gil = propertyGetter.GetILGenerator();
-                gil.Emit(OpCodes.Ldarg_0);
-                gil.Emit(OpCodes.Ldfld, fields[i]);
-                gil.Emit(OpCodes.Ret);
-
-                property.SetGetMethod(propertyGetter);
-            }
-
-            return fields;
-        }
-
+ 
         /// <summary>
         ///  class Anonymous_generate_1 {
         ///     public int m_a;
@@ -96,10 +35,7 @@ namespace Dpa.Repository.Implements.Runtime
             int gen = Interlocked.Increment(ref generateCount);
 
             TypeBuilder typeBuilder = moduleBuilder.DefineType("Anonymous_generate_e" + gen);
-            FieldBuilder[] fields = DefineProperty(
-                typeBuilder,
-                properties,
-                (p) => new NameAndType(p.Name, p.PropertyType));
+            FieldBuilder[] fields = typeBuilder.DefineFieldAndGetProperty(properties);
 
             ConstructorBuilder ctor = typeBuilder.DefineConstructor(
                 MethodAttributes.Public,
@@ -144,10 +80,7 @@ namespace Dpa.Repository.Implements.Runtime
             int gen = Interlocked.Increment(ref generateCount);
 
             TypeBuilder typeBuilder = moduleBuilder.DefineType("Anonymous_generate_p" + gen);
-            FieldBuilder[] fields = DefineProperty(
-                typeBuilder,
-                parameters,
-                p => new NameAndType(p.Name, p.ParameterType));
+            FieldBuilder[] fields = typeBuilder.DefineFieldAndGetProperty(parameters);
 
             ConstructorBuilder ctor = typeBuilder.DefineConstructor(
                 MethodAttributes.Public,
