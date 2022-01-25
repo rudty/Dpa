@@ -26,15 +26,14 @@ namespace Dpa.Repository.Implements.Types
             }
         }
 
-
         private readonly Dapper.DefaultTypeMap baseDelegate;
         private readonly Dictionary<ColumnName, FieldAndPropertyMemberMap> columns;
 
         public TypeMap(Type classType)
         {
-            PropertyInfo[] propertyInfo = classType.GetProperties(TypeMapDefaultBindingFlags);
-            FieldInfo[] fieldInfos = classType.GetFields(TypeMapDefaultBindingFlags);
-            columns = new Dictionary<ColumnName, FieldAndPropertyMemberMap>(fieldInfos.Length + propertyInfo.Length);
+            IReadOnlyList<PropertyInfo> propertyInfo = classType.GetMappingProperties();
+            IReadOnlyList<FieldInfo> fieldInfos = classType.GetMappingFields();
+            columns = new Dictionary<ColumnName, FieldAndPropertyMemberMap>(fieldInfos.Count + propertyInfo.Count);
             baseDelegate = new Dapper.DefaultTypeMap(classType);
 
             foreach (PropertyInfo member in propertyInfo)
@@ -43,25 +42,24 @@ namespace Dpa.Repository.Implements.Types
                 {
                     continue;
                 }
-                
-                ColumnAttribute columnAttribute = member.GetCustomAttribute<ColumnAttribute>();
-                if (columnAttribute != null &&
-                    false == string.IsNullOrEmpty(columnAttribute.Name))
+
+                string attrName = member.GetColumnAttributeName();
+                if (attrName != null)
                 {
-                    columns.TryAdd(columnAttribute.Name, new FieldAndPropertyMemberMap(columnAttribute.Name, member));
+                    columns.TryAdd(attrName, new FieldAndPropertyMemberMap(attrName, member));
                 }
             }
 
             foreach (FieldInfo member in fieldInfos)
             {
-                ColumnAttribute columnAttribute = member.GetCustomAttribute<ColumnAttribute>();
-                if (columnAttribute != null &&
-                    false == string.IsNullOrEmpty(columnAttribute.Name))
+                string attrName = member.GetColumnAttributeName();
+                if (attrName != null)
                 {
-                    columns.TryAdd(columnAttribute.Name, new FieldAndPropertyMemberMap(columnAttribute.Name, member));
+                    columns.TryAdd(attrName, new FieldAndPropertyMemberMap(attrName, member));
                 }
             }
         }
+
         ConstructorInfo Dapper.SqlMapper.ITypeMap.FindConstructor(string[] names, Type[] types)
         {
             return baseDelegate.FindConstructor(names, types);

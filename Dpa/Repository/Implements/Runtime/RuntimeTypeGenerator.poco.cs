@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Dpa.Repository.Implements.Types;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
@@ -27,11 +28,7 @@ namespace Dpa.Repository.Implements.Runtime
         /// </summary>
         public static Type GenerateAnonymousEntityFromEntity(Type entityType)
         {
-            IReadOnlyList<PropertyInfo> properties = entityType
-                .GetProperties(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
-                .Where(p => p.GetCustomAttribute<NotMappedAttribute>() is null)
-                .ToList();
-
+            IReadOnlyList<PropertyInfo> properties = entityType.GetMappingProperties();
             int gen = Interlocked.Increment(ref generateCount);
 
             TypeBuilder typeBuilder = moduleBuilder.DefineType("Anonymous_generate_e" + gen);
@@ -86,7 +83,6 @@ namespace Dpa.Repository.Implements.Runtime
                 MethodAttributes.Public,
                 CallingConventions.Standard,
                 fields.Select(e => e.FieldType).ToArray());
-
 
             ILGenerator il = ctor.GetILGenerator();
 
