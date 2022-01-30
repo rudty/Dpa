@@ -9,33 +9,11 @@ namespace Dpa.Repository.Implements.Types
     {
         private const BindingFlags accessBindingFlags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
 
-        internal static string GetColumnAttributeName(this MemberInfo m)
-        {
-            ColumnAttribute attr = m.GetCustomAttribute<ColumnAttribute>();
-            if (attr != null && false == string.IsNullOrEmpty(attr.Name))
-            {
-                return attr.Name;
-            }
-
-            return null;
-        }
-
-        internal static string GetColumnName(this MemberInfo m)
-        {
-            string columnAttrName = GetColumnAttributeName(m);
-            if (columnAttrName is null)
-            {
-                return m.Name;
-            }
-
-            return columnAttrName;
-        }
-
-        internal static IReadOnlyList<FieldInfo> GetMappingFields(this Type t)
+        internal static EntityCollection<FieldInfo> GetMappingFields(this Type t)
         {
             FieldInfo[] fieldInfos = t.GetFields(accessBindingFlags);
 
-            List<FieldInfo> l = new List<FieldInfo>(fieldInfos.Length);
+            EntityCollection<FieldInfo> l = new EntityCollection<FieldInfo>(fieldInfos.Length);
             foreach (FieldInfo f in fieldInfos)
             {
                 if (f.GetCustomAttribute<NotMappedAttribute>() != null)
@@ -43,17 +21,17 @@ namespace Dpa.Repository.Implements.Types
                     continue;
                 }
 
-                l.Add(f);
+                l.Add(Entity<FieldInfo>.New(f));
             }
 
             return l;
         }
 
-        internal static IReadOnlyList<PropertyInfo> GetMappingProperties(this Type t)
+        internal static EntityCollection<PropertyInfo> GetMappingProperties(this Type t)
         {
             PropertyInfo[] props = t.GetProperties(accessBindingFlags);
 
-            List<PropertyInfo> l = new List<PropertyInfo>(props.Length);
+            EntityCollection<PropertyInfo> l = new EntityCollection<PropertyInfo>(props.Length);
             foreach (PropertyInfo p in props)
             {
                 if (p.GetCustomAttribute<NotMappedAttribute>() != null)
@@ -67,7 +45,20 @@ namespace Dpa.Repository.Implements.Types
                     continue;
                 }
 
-                l.Add(p);
+                l.Add(Entity<PropertyInfo>.New(p));
+            }
+
+            return l;
+        }
+
+        internal static EntityCollection<ParameterInfo> GetMappingParameters(this MethodInfo m)
+        {
+            ParameterInfo[] parameterInfos = m.GetParameters();
+
+            EntityCollection<ParameterInfo> l = new EntityCollection<ParameterInfo>(parameterInfos.Length);
+            foreach (ParameterInfo f in parameterInfos)
+            {
+                l.Add(Entity<ParameterInfo>.New(f));
             }
 
             return l;

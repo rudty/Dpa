@@ -26,9 +26,9 @@ namespace Dpa.Repository.Implements.Runtime
         ///     }
         ///  }
         /// </summary>
-        public static Type GenerateAnonymousEntityFromEntity(Type entityType)
+        internal static Type GenerateAnonymousEntityFromEntity(Type entityType)
         {
-            IReadOnlyList<PropertyInfo> properties = entityType.GetMappingProperties();
+            EntityCollection<PropertyInfo> properties = entityType.GetMappingProperties();
             int gen = Interlocked.Increment(ref generateCount);
 
             TypeBuilder typeBuilder = moduleBuilder.DefineType("Anonymous_generate_e" + gen);
@@ -43,7 +43,7 @@ namespace Dpa.Repository.Implements.Runtime
 
             for (int i = 0; i < properties.Count; ++i)
             {
-                MethodInfo getter = properties[i].GetGetMethod(nonPublic: true);
+                MethodInfo getter = properties[i].Info.GetGetMethod(nonPublic: true);
                 // this.field[i] = arg[i]
                 il.Emit(OpCodes.Ldarg_0);
                 il.Emit(OpCodes.Ldarg_1);
@@ -72,7 +72,7 @@ namespace Dpa.Repository.Implements.Runtime
         ///     }
         ///  }
         /// </summary>
-        public static Type GenerateAnonymousEntityFromParameter(IReadOnlyList<ParameterInfo> parameters)
+        internal static Type GenerateAnonymousEntityFromParameter(EntityCollection<ParameterInfo> parameters)
         {
             int gen = Interlocked.Increment(ref generateCount);
 
@@ -93,7 +93,7 @@ namespace Dpa.Repository.Implements.Runtime
                 il.Emit(OpCodes.Ldarg, i + 1);
                 il.Emit(OpCodes.Stfld, fields[i]);
 
-                ctor.DefineParameter(i + 1, ParameterAttributes.In, parameters[i].Name);
+                ctor.DefineParameter(i + 1, ParameterAttributes.In, parameters[i].ColumnName);
             }
 
             il.Emit(OpCodes.Ret);

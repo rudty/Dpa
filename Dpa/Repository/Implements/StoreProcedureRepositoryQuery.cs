@@ -1,8 +1,10 @@
-﻿using System;
+﻿using Dpa.Repository.Implements.Types;
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -23,12 +25,13 @@ namespace Dpa.Repository.Implements
 
         public StoreProcedureRepositoryQuery()
         {
-            RepositoryPropertyNameInfo propertyNameInfo = ReflectUtils.GetRepositoryPropertyInfo(typeof(T));
+            EntityCollection<PropertyInfo> props = typeof(T).GetMappingProperties();
+            string tableName = ReflectUtils.GetTableName(typeof(T));
 
             Func<ID, object> idBinder = IRepositoryQuery<T, ID>.GetDefaultIdQueryParameterBinder();
             Func<T, object> entityBinder = IRepositoryQuery<T, ID>.GetDefaultEntityQueryParameterBinder();
 
-            string storeProcedureTableName = GetStoreProcedureTableName(propertyNameInfo.TableName);
+            string storeProcedureTableName = GetStoreProcedureTableName(tableName);
 
             Select = new QueryAndParameter<ID>(GetStoreProcedureName(storeProcedureTableName, "select"), idBinder);
             Insert = new QueryAndParameter<T>(GetStoreProcedureName(storeProcedureTableName, "insert"), entityBinder);

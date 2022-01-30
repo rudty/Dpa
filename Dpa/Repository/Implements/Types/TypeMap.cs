@@ -31,31 +31,31 @@ namespace Dpa.Repository.Implements.Types
 
         public TypeMap(Type classType)
         {
-            IReadOnlyList<PropertyInfo> propertyInfo = classType.GetMappingProperties();
-            IReadOnlyList<FieldInfo> fieldInfos = classType.GetMappingFields();
+            EntityCollection<PropertyInfo> propertyInfo = classType.GetMappingProperties();
+            EntityCollection<FieldInfo> fieldInfos = classType.GetMappingFields();
             columns = new Dictionary<ColumnName, FieldAndPropertyMemberMap>(fieldInfos.Count + propertyInfo.Count);
             baseDelegate = new Dapper.DefaultTypeMap(classType);
 
-            foreach (PropertyInfo member in propertyInfo)
+            foreach (Entity<PropertyInfo> member in propertyInfo)
             {
-                if (member.GetSetMethod(nonPublic: true) == null)
+                if (member.Info.GetSetMethod(nonPublic: true) == null)
                 {
                     continue;
                 }
 
-                string attrName = member.GetColumnAttributeName();
-                if (attrName != null)
+                ColumnName c = member.ColumnAttributeName;
+                if (c != null)
                 {
-                    columns.TryAdd(attrName, new FieldAndPropertyMemberMap(attrName, member));
+                    columns.TryAdd(c, new FieldAndPropertyMemberMap(c, member.Info));
                 }
             }
 
-            foreach (FieldInfo member in fieldInfos)
+            foreach (Entity<FieldInfo> member in fieldInfos)
             {
-                string attrName = member.GetColumnAttributeName();
-                if (attrName != null)
+                ColumnName c = member.ColumnAttributeName;
+                if (c != null)
                 {
-                    columns.TryAdd(attrName, new FieldAndPropertyMemberMap(attrName, member));
+                    columns.TryAdd(c, new FieldAndPropertyMemberMap(c, member.Info));
                 }
             }
         }

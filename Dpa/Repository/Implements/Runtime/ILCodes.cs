@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Dpa.Repository.Implements.Types;
+using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Reflection.Emit;
@@ -10,37 +11,14 @@ namespace Dpa.Repository.Implements.Runtime
     {
         private static readonly MethodInfo mMoveNext = typeof(System.Collections.IEnumerator).GetMethod("MoveNext");
 
-        private readonly struct NameAndType
-        {
-            public readonly string Name;
-            public readonly Type Type;
-
-            public NameAndType(string s, Type t)
-            {
-                Name = s;
-                Type = t;
-            }
-
-            public static NameAndType New(PropertyInfo p)
-            {
-                return new NameAndType(p.Name, p.PropertyType);
-            }
-
-            public static NameAndType New(ParameterInfo p)
-            {
-                return new NameAndType(p.Name, p.ParameterType);
-            }
-        }
-
         /// <summary>
         /// reflection 에서 기반 클래스가 없어서 함수로 제작
         /// </summary>
         /// <typeparam name="T">type/name을 가지고있는것 PropertyInfo나 ParameterInfo<</typeparam>
         /// <param name="typeBuilder">builder</param>
         /// <param name="props">프로퍼티를 만들 목록/param>
-        /// <param name="fn">이름과 실제 타입을 반환</param>
         /// <return>생성된 field 정보</return>
-        private static FieldBuilder[] DefineProperty<T>(TypeBuilder typeBuilder, IReadOnlyList<T> props, Func<T, NameAndType> fn)
+        internal static FieldBuilder[] DefineFieldAndProperty<T>(this TypeBuilder typeBuilder, EntityCollection<T> props)
         {
             const string memberPrefix = "m_";
             const string getterMethodPrefix = "get_";
@@ -52,23 +30,24 @@ namespace Dpa.Repository.Implements.Runtime
                 // int value { get; }
                 // int get_value() { return this.m_value; } <- 이게 위에 프로퍼티에서 get; 
 
-                NameAndType np = fn(props[i]);
+                string fieldName = props[i].MemberName;
+                Type entityType = props[i].ColumnType;
 
                 fields[i] = typeBuilder.DefineField(
-                    memberPrefix + np.Name,
-                    np.Type,
+                    memberPrefix + fieldName,
+                    entityType,
                     FieldAttributes.Public);
 
                 PropertyBuilder property = typeBuilder.DefineProperty(
-                    np.Name,
+                    fieldName,
                     PropertyAttributes.HasDefault,
-                    np.Type,
+                    entityType,
                     null);
 
                 MethodBuilder propertyGetter = typeBuilder.DefineMethod(
-                    getterMethodPrefix + np.Name,
+                    getterMethodPrefix + fieldName,
                     MethodAttributes.Public,
-                    np.Type,
+                    entityType,
                     null);
 
                 ILGenerator gil = propertyGetter.GetILGenerator();
@@ -80,16 +59,6 @@ namespace Dpa.Repository.Implements.Runtime
             }
 
             return fields;
-        }
-
-        public static FieldBuilder[] DefineFieldAndProperty(this TypeBuilder typeBuilder, IReadOnlyList<PropertyInfo> props)
-        {
-            return DefineProperty(typeBuilder, props, NameAndType.New);
-        }
-
-        public static FieldBuilder[] DefineFieldAndProperty(this TypeBuilder typeBuilder, IReadOnlyList<ParameterInfo> props)
-        {
-            return DefineProperty(typeBuilder, props, NameAndType.New);
         }
 
         /// <summary>

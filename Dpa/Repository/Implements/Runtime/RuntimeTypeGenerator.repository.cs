@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Dpa.Repository.Implements.Types;
+using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Linq;
@@ -111,22 +112,22 @@ namespace Dpa.Repository.Implements.Runtime
                 il.Emit(OpCodes.Ldc_I4, (int)commandType);
 
                 MethodParameters parameters = new MethodParameters(method);
-                if (parameters.TransactionParameter != null)
+                if (parameters.TransactionParameter.HasValue)
                 {
-                    il.Emit(OpCodes.Ldarg, parameters.TransactionParameter.Position + 1);
+                    il.Emit(OpCodes.Ldarg, parameters.TransactionParameter.Value.Info.Position + 1);
                 } 
                 else
                 {
                     il.Emit(OpCodes.Ldnull);
                 }
 
-                ParameterInfo entityParameter = parameters.EntityParameter;
-                if (entityParameter != null)
+                Entity<ParameterInfo>? entityParameter = parameters.EntityParameter;
+                if (entityParameter.HasValue)
                 {
                     // Execute(connection, "select * from table", commandType, (param));
-                    il.Emit(OpCodes.Ldarg, entityParameter.Position + 1);
+                    il.Emit(OpCodes.Ldarg, entityParameter.Value.Info.Position + 1);
 
-                    Type entityType = entityParameter.ParameterType;
+                    Type entityType = entityParameter.Value.MemberType;
                     if (commandType == CommandType.StoredProcedure && 
                         ReflectUtils.HasEntityAttribute(entityType))
                     {
@@ -148,9 +149,9 @@ namespace Dpa.Repository.Implements.Runtime
                     // Execute(connection, "select * from table", commandType, param);
                     Type anonymousClassType = GenerateAnonymousEntityFromParameter(parameters.QueryParameters);
                     ConstructorInfo anonymousCtor = anonymousClassType.GetConstructors()[0];
-                    foreach (ParameterInfo queryParameter in parameters.QueryParameters)
+                    foreach (Entity<ParameterInfo> queryParameter in parameters.QueryParameters)
                     {
-                        il.Emit(OpCodes.Ldarg, queryParameter.Position + 1);
+                        il.Emit(OpCodes.Ldarg, queryParameter.Info.Position + 1);
                     }
                     il.Emit(OpCodes.Newobj, anonymousCtor);
                 }
@@ -165,22 +166,22 @@ namespace Dpa.Repository.Implements.Runtime
             /// <summary>
             /// 전체 파라메터들
             /// </summary>
-            public readonly List<ParameterInfo> Parameters;
+            public readonly EntityCollection<ParameterInfo> Parameters;
 
             /// <summary>
             /// IDbTransaction 을 제외한 파라메터들
             /// </summary>
-            public readonly List<ParameterInfo> QueryParameters;
+            public readonly EntityCollection<ParameterInfo> QueryParameters;
 
             /// <summary>
             /// IDbTransaction 파라메터
             /// </summary>
-            public readonly ParameterInfo TransactionParameter;
+            public readonly Entity<ParameterInfo>? TransactionParameter;
 
             /// <summary>
             /// Entity 의 파라메터
             /// </summary>
-            public readonly ParameterInfo EntityParameter;
+            public readonly Entity<ParameterInfo>? EntityParameter;
 
             /// <summary>
             /// 시그니처 파라메터 수 (= Parameters.Length)
@@ -189,16 +190,16 @@ namespace Dpa.Repository.Implements.Runtime
 
             public MethodParameters(MethodInfo methodInfo)
             {
-                ParameterInfo[] parameters = methodInfo.GetParameters();
-                this.QueryParameters = new List<ParameterInfo>(parameters.Length);
-                this.Parameters = new List<ParameterInfo>(parameters.Length);
+                EntityCollection<ParameterInfo> parameters = methodInfo.GetMappingParameters();
+                this.QueryParameters = new EntityCollection<ParameterInfo>(parameters.Count);
+                this.Parameters = new EntityCollection<ParameterInfo>(parameters.Count);
 
-                ParameterInfo transactionParameter = null;
-                foreach (ParameterInfo parameterInfo in parameters)
+                Entity<ParameterInfo>? transactionParameter = null;
+                foreach (Entity<ParameterInfo> parameterInfo in parameters)
                 {
                     Parameters.Add(parameterInfo);
 
-                    if (typeof(IDbTransaction).IsAssignableFrom(parameterInfo.ParameterType))
+                    if (typeof(IDbTransaction).IsAssignableFrom(parameterInfo.MemberType))
                     {
                         if (transactionParameter != null)
                         {
@@ -214,10 +215,10 @@ namespace Dpa.Repository.Implements.Runtime
                 }
                 
                 TransactionParameter = transactionParameter;
-                Length = parameters.Length;
+                Length = parameters.Count;
 
                 if (QueryParameters.Count == 1 && 
-                    false == ReflectUtils.IsDbTypeExists(QueryParameters[0].ParameterType))
+                    false == ReflectUtils.IsDbTypeExists(QueryParameters[0].MemberType))
                 {
                     EntityParameter = QueryParameters[0];
                 }
@@ -227,7 +228,7 @@ namespace Dpa.Repository.Implements.Runtime
                 }
             }
 
-            public ParameterInfo this[int index]
+            public Entity<ParameterInfo> this[int index]
             {
                 get => Parameters[index];
             }

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Data;
 using System.Text;
 using System.Reflection;
+using Dpa.Repository.Implements.Types;
 
 namespace Dpa.Repository.Implements
 {
@@ -21,37 +22,39 @@ namespace Dpa.Repository.Implements
 
         public TextRepositoryQuery()
         {
-            RepositoryPropertyNameInfo propertyNameInfo = ReflectUtils.GetRepositoryPropertyInfo(typeof(T));
-            string columns = string.Join(',', propertyNameInfo.PropertyNames.Select(p => p.ColumnName));
-            string cond = GetCond(propertyNameInfo.PrimaryKeyPropertyNames);
+            EntityCollection<PropertyInfo> properties = typeof(T).GetMappingProperties();
+            
+            string columns = string.Join(',', properties.Select(p => p.ColumnName));
+            string cond = GetCond(properties.GetPrimaryKeys().ToList());
+            string tableName = ReflectUtils.GetTableName(typeof(T));
 
             Func<ID, object> idBinder = IRepositoryQuery<T, ID>.GetDefaultIdQueryParameterBinder();
             Func<T, object> entityBinder = IRepositoryQuery<T, ID>.GetDefaultEntityQueryParameterBinder();
 
-            Select = new QueryAndParameter<ID>(GetSelectQuery(columns, propertyNameInfo.TableName, cond), idBinder);
-            Insert = new QueryAndParameter<T>(GetInsertQuery(columns, propertyNameInfo.TableName, propertyNameInfo.PropertyNames), entityBinder);
-            Update = new QueryAndParameter<T>(GetUpdateQuery(propertyNameInfo.TableName, propertyNameInfo.PropertyNames, propertyNameInfo.PrimaryKeyPropertyNames), entityBinder);
-            Delete = new QueryAndParameter<ID>(GetDeleteQuery(propertyNameInfo.TableName, cond), idBinder);
+            Select = new QueryAndParameter<ID>(GetSelectQuery(columns, tableName, cond), idBinder);
+            Insert = new QueryAndParameter<T>(GetInsertQuery(columns, tableName, properties), entityBinder);
+            Update = new QueryAndParameter<T>(GetUpdateQuery(tableName, properties), entityBinder);
+            Delete = new QueryAndParameter<ID>(GetDeleteQuery(tableName, cond), idBinder);
         }
 
-        private static string GetCond(List<RepositoryColumn> primaryKeyPropertyName)
+        private static string GetCond(List<Entity<PropertyInfo>> primaryKeyProperies)
         {
-            if (primaryKeyPropertyName.Count == 1)
+            if (primaryKeyProperies.Count == 1)
             {
-                return $"where {primaryKeyPropertyName[0].ColumnName} = @id";
+                return $"where {primaryKeyProperies[0].ColumnName} = @id";
             }
 
             StringBuilder builder = new StringBuilder(100);
             builder.Append("where ");
-            for (int i = 0; i < primaryKeyPropertyName.Count; ++i)
+            for (int i = 0; i < primaryKeyProperies.Count; ++i)
             {
                 if (i > 0)
                 {
                     builder.Append(" and ");
                 }
-                builder.Append(primaryKeyPropertyName[i].ColumnName);
+                builder.Append(primaryKeyProperies[i].ColumnName);
                 builder.Append("=@");
-                builder.Append(primaryKeyPropertyName[i].PropertyName);
+                builder.Append(primaryKeyProperies[i].MemberName);
             }
 
             return builder.ToString();
@@ -61,16 +64,17 @@ namespace Dpa.Repository.Implements
         {
             return $"delete from {tableName} {cond};";
         }
-        private static string GetUpdateQuery(string tableName, List<RepositoryColumn> propertyNames, List<RepositoryColumn> pkNames)
+
+        private static string GetUpdateQuery(string tableName, EntityCollection<PropertyInfo> props)
         {
-            string updateNames = string.Join(',', propertyNames.Select(n => $"{n.ColumnName}=@{n.PropertyName}"));
-            string whereNames = string.Join(" and ", pkNames.Select(n => $"{n.ColumnName}=@{n.PropertyName}"));
+            string updateNames = string.Join(',', props.GetNotPkColumns().Select(p => $"{p.ColumnName}=@{p.MemberName}"));
+            string whereNames = string.Join(" and ", props.GetPrimaryKeys().Select(p => $"{p.ColumnName}=@{p.MemberName}"));
             return $"update {tableName} set {updateNames} where {whereNames};";
         }
 
-        private static string GetInsertQuery(string columns, string tableName, List<RepositoryColumn> propertyNames)
+        private static string GetInsertQuery(string columns, string tableName, EntityCollection<PropertyInfo> props)
         {
-            string parameters = "@" + string.Join(",@", propertyNames.Select(p => p.PropertyName));
+            string parameters = "@" + string.Join(",@", props.Select(p => p.MemberName));
             return $"insert into {tableName}({columns}) values({parameters});";
         }
 

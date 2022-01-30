@@ -1,6 +1,5 @@
 ﻿
 using System;
-using System.Runtime.InteropServices.WindowsRuntime;
 
 namespace Test.Entity
 {
