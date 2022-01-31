@@ -128,8 +128,9 @@ namespace Dpa.Repository.Implements.Runtime
                     il.Emit(OpCodes.Ldarg, entityParameter.Value.Info.Position + 1);
 
                     Type entityType = entityParameter.Value.MemberType;
-                    if (commandType == CommandType.StoredProcedure && 
-                        ReflectUtils.HasEntityAttribute(entityType))
+                    if (commandType == CommandType.StoredProcedure)
+                    //if (commandType == CommandType.StoredProcedure && 
+                    //    ReflectUtils.HasEntityAttribute(entityType))
                     {
                         // Execute(connection, "select * from table", commandType, new {
                         // A = param.A, B = param.B

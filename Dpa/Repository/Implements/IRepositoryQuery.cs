@@ -1,11 +1,7 @@
 ﻿
 using Dpa.Repository.Implements.Runtime;
 using System;
-using System.ComponentModel.DataAnnotations.Schema;
 using System.Data;
-using System.Linq;
-using System.Reflection;
-using System.Runtime.InteropServices.ComTypes;
 
 namespace Dpa.Repository.Implements
 {

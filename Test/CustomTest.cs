@@ -6,9 +6,6 @@ using Test.Entity;
 using System.Collections.Generic;
 using System.Data;
 using Test.Helper;
-using System.Data.SqlClient;
-using System.Runtime.InteropServices;
-using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Test
 {
@@ -237,6 +234,86 @@ end";
 
             var r1 = await repo.sp_helptext("sp_helptext");
             Assert.False(string.IsNullOrEmpty(r1));
+        }
+
+        public struct SII
+        {
+            public int A { get; }
+            public int B { get; }
+
+            public SII(int a, int b)
+            {
+                A = a;
+                B = b;
+            }
+        }
+
+        public class EnumerableWrapper  
+        {
+            public IEnumerable<SII> Value { get; }
+
+            public EnumerableWrapper(IEnumerable<SII> value)
+            {
+                Value = value;
+            }
+        }
+
+        public interface ICustomEnumerable
+        {
+            Task PSSI(EnumerableWrapper value);
+        }
+
+        public interface ICustomEnumerable2
+        {
+            Task PSSI(IEnumerable<SII> value);
+        }
+
+        [Fact]
+        public async Task TableType()
+        {
+            var cmd = connection.CreateCommand();
+
+            cmd.CommandText = "drop proc if exists PSSI;";
+            await cmd.ExecuteNonQueryAsync();
+
+            cmd.CommandText = "drop type if exists SII;";
+            await cmd.ExecuteNonQueryAsync();
+
+            cmd.CommandText = "create type SII as table (a int,b int);";
+            await cmd.ExecuteNonQueryAsync();
+
+
+            cmd.CommandText = @"
+create proc PSSI 
+@value SII readonly
+as
+if (select count(*) from @value) = 0
+throw 54321, 'list > 0', 1
+";
+            await cmd.ExecuteNonQueryAsync();
+
+            try
+            {
+                
+                var l = new List<SII>();
+                l.Add(new SII(1, 2));
+                l.Add(new SII(3, 4));
+                var w = new EnumerableWrapper(l);
+
+                var repo = await RepositoryGenerator.Custom<ICustomEnumerable>(connection);
+                await repo.PSSI(new EnumerableWrapper(l));
+
+                var repo2 = await RepositoryGenerator.Custom<ICustomEnumerable2>(connection);
+                await repo2.PSSI(l);
+            }
+            finally
+            {
+                cmd.CommandText = "drop proc if exists PSSI;";
+                await cmd.ExecuteNonQueryAsync();
+
+                cmd.CommandText = "drop type if exists SII;";
+                await cmd.ExecuteNonQueryAsync();
+            }
         }
     }
 }

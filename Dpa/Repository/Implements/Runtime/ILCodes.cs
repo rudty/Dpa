@@ -117,7 +117,7 @@ namespace Dpa.Repository.Implements.Runtime
         /// <param name="elemType">배열의 원소 타입</param>
         /// <param name="size">크기</param>
         /// <param name="onAssignAt">i번째 요소에 할당할 원소</param>
-        public static void NewArrayAndAssignInline(ILGenerator il, Type elemType, int size, Action<int> onAssignAt)
+        public static void NewRefArrayAndAssignInline(ILGenerator il, Type elemType, int size, Action<int> onAssignAt)
         {
             il.Emit(OpCodes.Ldc_I4, size);
             il.Emit(OpCodes.Newarr, elemType);

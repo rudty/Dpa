@@ -35,19 +35,29 @@ namespace Dpa.Repository.Implements.Runtime
             FieldBuilder[] fields = typeBuilder.DefineFieldAndProperty(properties);
 
             ConstructorBuilder ctor = typeBuilder.DefineConstructor(
-                MethodAttributes.Public,
-                CallingConventions.Standard,
-                new Type[] { entityType });
+                         MethodAttributes.Public,
+                         CallingConventions.Standard,
+                         new Type[] { entityType });
 
             ILGenerator il = ctor.GetILGenerator();
+
+            OpCode loadThis = OpCodes.Ldarg;
+            if (entityType.IsValueType)
+            {
+                loadThis = OpCodes.Ldarga;
+            }
 
             for (int i = 0; i < properties.Count; ++i)
             {
                 MethodInfo getter = properties[i].Info.GetGetMethod(nonPublic: true);
                 // this.field[i] = arg[i]
                 il.Emit(OpCodes.Ldarg_0);
-                il.Emit(OpCodes.Ldarg_1);
+                il.Emit(loadThis, 1);
                 il.EmitCall(OpCodes.Call, getter, null);
+                if (properties[i].MemberToColumn != null)
+                {
+                    properties[i].MemberToColumn(il);    
+                }
                 il.Emit(OpCodes.Stfld, fields[i]);
             }
 
@@ -91,6 +101,11 @@ namespace Dpa.Repository.Implements.Runtime
                 // this.field[i] = arg[i]
                 il.Emit(OpCodes.Ldarg_0);
                 il.Emit(OpCodes.Ldarg, i + 1);
+                if (parameters[i].MemberToColumn != null)
+                {
+                    parameters[i].MemberToColumn(il);
+                }
+
                 il.Emit(OpCodes.Stfld, fields[i]);
 
                 ctor.DefineParameter(i + 1, ParameterAttributes.In, parameters[i].ColumnName);

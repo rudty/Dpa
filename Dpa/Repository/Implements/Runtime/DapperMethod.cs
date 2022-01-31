@@ -17,13 +17,15 @@ namespace Dpa.Repository.Implements.Runtime
         private static readonly MethodInfo dapperQueryMethod_object = dapperQueryMethod.MakeGenericMethod(typeof(object));
         private static readonly MethodInfo dapperQueryFirstMethod = myType.GetMethod("DapperQueryFirst", findMethodFlags);
 
+        public static readonly MethodInfo dapperAsTableValuedParameter = myType.GetMethod("DapperAsTableValuedParameter", findMethodFlags);
+
         public static MethodInfo FindCallMethod(Type t)
         {
             if (t == typeof(Task))
             {
                 return dapperExecuteMethod;
             }
-
+            
             // Task<T>
             Type taskResultType = t.GetGenericArguments()[0];
             if (taskResultType.IsGenericType)
@@ -60,6 +62,11 @@ namespace Dpa.Repository.Implements.Runtime
         public static Task<E> DapperQueryFirst<E>(DbConnection connection, string sql, CommandType commandType, IDbTransaction transaction, object param)
         {
             return Dapper.SqlMapper.QueryFirstOrDefaultAsync<E>(connection, sql, param, transaction, commandType: commandType);
+        }
+
+        public static Dapper.SqlMapper.ICustomQueryParameter DapperAsTableValuedParameter(DataTable table)
+        {
+            return Dapper.SqlMapper.AsTableValuedParameter(table);
         }
     }
 }
