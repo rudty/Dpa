@@ -25,7 +25,7 @@ namespace Dpa.Repository.Implements
 
         public StoreProcedureRepositoryQuery()
         {
-            EntityCollection<PropertyInfo> props = typeof(T).GetMappingProperties();
+            Entity<PropertyInfo> props = typeof(T).GetMappingProperties();
             string tableName = ReflectUtils.GetTableName(typeof(T));
 
             Func<ID, object> idBinder = IRepositoryQuery<T, ID>.GetDefaultIdQueryParameterBinder();
@@ -50,7 +50,7 @@ namespace Dpa.Repository.Implements
             return $"{tableName}_{op}_dpa_generated";
         }
 
-        private static string MakeStoreProcedureParameter(Dictionary<string, TableType> tableType, List<Entity<PropertyInfo>> propertyNames)
+        private static string MakeStoreProcedureParameter(Dictionary<string, TableType> tableType, List<Column<PropertyInfo>> propertyNames)
         {
             StringBuilder entityProcedureParameter = new StringBuilder(200);
             for (int i = 0; i < propertyNames.Count; ++i)
@@ -73,11 +73,11 @@ namespace Dpa.Repository.Implements
 
         internal async Task EnsureStoreProcedure(DbConnection connection)
         {
-            EntityCollection<PropertyInfo> props = typeof(T).GetMappingProperties();
+            Entity<PropertyInfo> props = typeof(T).GetMappingProperties();
             string tableName = ReflectUtils.GetTableName(typeof(T));
             Dictionary<string, TableType> tableType = await GetTableType(connection, tableName);
             string idStoreProcedureParameter;
-            List<Entity<PropertyInfo>> pkProps = props.GetPrimaryKeys().ToList();
+            List<Column<PropertyInfo>> pkProps = props.GetPrimaryKeys().ToList();
 
             if (pkProps.Count == 1)
             {

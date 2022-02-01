@@ -22,7 +22,7 @@ namespace Dpa.Repository.Implements
 
         public TextRepositoryQuery()
         {
-            EntityCollection<PropertyInfo> properties = typeof(T).GetMappingProperties();
+            Entity<PropertyInfo> properties = typeof(T).GetMappingProperties();
             
             string columns = string.Join(',', properties.Select(p => p.ColumnName));
             string cond = GetCond(properties.GetPrimaryKeys().ToList());
@@ -37,7 +37,7 @@ namespace Dpa.Repository.Implements
             Delete = new QueryAndParameter<ID>(GetDeleteQuery(tableName, cond), idBinder);
         }
 
-        private static string GetCond(List<Entity<PropertyInfo>> primaryKeyProperies)
+        private static string GetCond(List<Column<PropertyInfo>> primaryKeyProperies)
         {
             if (primaryKeyProperies.Count == 1)
             {
@@ -65,14 +65,14 @@ namespace Dpa.Repository.Implements
             return $"delete from {tableName} {cond};";
         }
 
-        private static string GetUpdateQuery(string tableName, EntityCollection<PropertyInfo> props)
+        private static string GetUpdateQuery(string tableName, Entity<PropertyInfo> props)
         {
             string updateNames = string.Join(',', props.GetNotPkColumns().Select(p => $"{p.ColumnName}=@{p.MemberName}"));
             string whereNames = string.Join(" and ", props.GetPrimaryKeys().Select(p => $"{p.ColumnName}=@{p.MemberName}"));
             return $"update {tableName} set {updateNames} where {whereNames};";
         }
 
-        private static string GetInsertQuery(string columns, string tableName, EntityCollection<PropertyInfo> props)
+        private static string GetInsertQuery(string columns, string tableName, Entity<PropertyInfo> props)
         {
             string parameters = "@" + string.Join(",@", props.Select(p => p.MemberName));
             return $"insert into {tableName}({columns}) values({parameters});";

@@ -18,7 +18,7 @@ namespace Dpa.Repository.Implements.Runtime
         /// <param name="typeBuilder">builder</param>
         /// <param name="props">프로퍼티를 만들 목록/param>
         /// <return>생성된 field 정보</return>
-        internal static FieldBuilder[] DefineFieldAndProperty<T>(this TypeBuilder typeBuilder, EntityCollection<T> props)
+        internal static FieldBuilder[] DefineFieldAndProperty<T>(this TypeBuilder typeBuilder, Entity<T> props)
         {
             const string memberPrefix = "m_";
             const string getterMethodPrefix = "get_";

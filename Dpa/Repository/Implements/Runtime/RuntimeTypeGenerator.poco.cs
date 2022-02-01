@@ -26,9 +26,9 @@ namespace Dpa.Repository.Implements.Runtime
         ///     }
         ///  }
         /// </summary>
-        internal static Type GenerateAnonymousEntityFromEntity(Type entityType, Func<Entity<PropertyInfo>, bool> selector = null)
+        internal static Type GenerateAnonymousEntityFromEntity(Type entityType, Func<Column<PropertyInfo>, bool> selector = null)
         {
-            EntityCollection<PropertyInfo> properties = entityType.GetMappingProperties(selector);
+            Entity<PropertyInfo> properties = entityType.GetMappingProperties(selector);
             int gen = Interlocked.Increment(ref generateCount);
 
             TypeBuilder typeBuilder = moduleBuilder.DefineType("Anonymous_generate_e" + gen);
@@ -82,7 +82,7 @@ namespace Dpa.Repository.Implements.Runtime
         ///     }
         ///  }
         /// </summary>
-        internal static Type GenerateAnonymousEntityFromParameter(EntityCollection<ParameterInfo> parameters)
+        internal static Type GenerateAnonymousEntityFromParameter(Entity<ParameterInfo> parameters)
         {
             int gen = Interlocked.Increment(ref generateCount);
 

@@ -121,7 +121,7 @@ namespace Dpa.Repository.Implements.Runtime
                     il.Emit(OpCodes.Ldnull);
                 }
 
-                Entity<ParameterInfo>? entityParameter = parameters.EntityParameter;
+                Column<ParameterInfo>? entityParameter = parameters.EntityParameter;
                 if (entityParameter.HasValue)
                 {
                     // Execute(connection, "select * from table", commandType, (param));
@@ -150,7 +150,7 @@ namespace Dpa.Repository.Implements.Runtime
                     // Execute(connection, "select * from table", commandType, param);
                     Type anonymousClassType = GenerateAnonymousEntityFromParameter(parameters.QueryParameters);
                     ConstructorInfo anonymousCtor = anonymousClassType.GetConstructors()[0];
-                    foreach (Entity<ParameterInfo> queryParameter in parameters.QueryParameters)
+                    foreach (Column<ParameterInfo> queryParameter in parameters.QueryParameters)
                     {
                         il.Emit(OpCodes.Ldarg, queryParameter.Info.Position + 1);
                     }
@@ -167,22 +167,22 @@ namespace Dpa.Repository.Implements.Runtime
             /// <summary>
             /// 전체 파라메터들
             /// </summary>
-            public readonly EntityCollection<ParameterInfo> Parameters;
+            public readonly Entity<ParameterInfo> Parameters;
 
             /// <summary>
             /// IDbTransaction 을 제외한 파라메터들
             /// </summary>
-            public readonly EntityCollection<ParameterInfo> QueryParameters;
+            public readonly Entity<ParameterInfo> QueryParameters;
 
             /// <summary>
             /// IDbTransaction 파라메터
             /// </summary>
-            public readonly Entity<ParameterInfo>? TransactionParameter;
+            public readonly Column<ParameterInfo>? TransactionParameter;
 
             /// <summary>
             /// Entity 의 파라메터
             /// </summary>
-            public readonly Entity<ParameterInfo>? EntityParameter;
+            public readonly Column<ParameterInfo>? EntityParameter;
 
             /// <summary>
             /// 시그니처 파라메터 수 (= Parameters.Length)
@@ -191,12 +191,12 @@ namespace Dpa.Repository.Implements.Runtime
 
             public MethodParameters(MethodInfo methodInfo)
             {
-                EntityCollection<ParameterInfo> parameters = methodInfo.GetMappingParameters();
-                this.QueryParameters = new EntityCollection<ParameterInfo>(parameters.Count);
-                this.Parameters = new EntityCollection<ParameterInfo>(parameters.Count);
+                Entity<ParameterInfo> parameters = methodInfo.GetMappingParameters();
+                this.QueryParameters = new Entity<ParameterInfo>(parameters.Count);
+                this.Parameters = new Entity<ParameterInfo>(parameters.Count);
 
-                Entity<ParameterInfo>? transactionParameter = null;
-                foreach (Entity<ParameterInfo> parameterInfo in parameters)
+                Column<ParameterInfo>? transactionParameter = null;
+                foreach (Column<ParameterInfo> parameterInfo in parameters)
                 {
                     Parameters.Add(parameterInfo);
 
@@ -229,7 +229,7 @@ namespace Dpa.Repository.Implements.Runtime
                 }
             }
 
-            public Entity<ParameterInfo> this[int index]
+            public Column<ParameterInfo> this[int index]
             {
                 get => Parameters[index];
             }

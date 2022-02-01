@@ -31,12 +31,12 @@ namespace Dpa.Repository.Implements.Types
 
         public TypeMap(Type classType)
         {
-            EntityCollection<PropertyInfo> propertyInfo = classType.GetMappingProperties();
-            EntityCollection<FieldInfo> fieldInfos = classType.GetMappingFields();
+            Entity<PropertyInfo> propertyInfo = classType.GetMappingProperties();
+            Entity<FieldInfo> fieldInfos = classType.GetMappingFields();
             columns = new Dictionary<ColumnName, FieldAndPropertyMemberMap>(fieldInfos.Count + propertyInfo.Count);
             baseDelegate = new Dapper.DefaultTypeMap(classType);
 
-            foreach (Entity<PropertyInfo> member in propertyInfo)
+            foreach (Column<PropertyInfo> member in propertyInfo)
             {
                 if (member.Info.GetSetMethod(nonPublic: true) == null)
                 {
@@ -50,7 +50,7 @@ namespace Dpa.Repository.Implements.Types
                 }
             }
 
-            foreach (Entity<FieldInfo> member in fieldInfos)
+            foreach (Column<FieldInfo> member in fieldInfos)
             {
                 ColumnName c = member.ColumnAttributeName;
                 if (c != null)

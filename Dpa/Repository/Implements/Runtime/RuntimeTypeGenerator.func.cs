@@ -19,7 +19,7 @@ namespace Dpa.Repository.Implements.Runtime
         ///     } 
         /// }
         /// </summary>
-        internal static Func<T, object> CreateFunctionClonePropertyAnonymousEntity<T>(Func<Entity<PropertyInfo>, bool> selector = null)
+        internal static Func<T, object> CreateFunctionClonePropertyAnonymousEntity<T>(Func<Column<PropertyInfo>, bool> selector = null)
         {
             Type entityType = typeof(T);
             Type newType = GenerateAnonymousEntityFromEntity(entityType, selector);
@@ -94,9 +94,9 @@ namespace Dpa.Repository.Implements.Runtime
             il.Emit(OpCodes.Call, rowsGetter);
             il.Emit(OpCodes.Stloc, fRows);
 
-            EntityCollection<PropertyInfo> props = entityType.GetMappingProperties();
+            Entity<PropertyInfo> props = entityType.GetMappingProperties();
 
-            foreach (Entity<PropertyInfo> p in props)
+            foreach (Column<PropertyInfo> p in props)
             {
                 il.Emit(OpCodes.Ldloc, fColumns);
                 il.Emit(OpCodes.Ldstr, p.ColumnName);

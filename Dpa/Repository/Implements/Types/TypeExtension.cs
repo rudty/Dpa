@@ -14,7 +14,7 @@ namespace Dpa.Repository.Implements.Types
             return true;
         }
 
-        internal static EntityCollection<FieldInfo> GetMappingFields(this Type t, Func<Entity<FieldInfo>, bool> selector = null)
+        internal static Entity<FieldInfo> GetMappingFields(this Type t, Func<Column<FieldInfo>, bool> selector = null)
         {
             if (selector is null)
             {
@@ -22,7 +22,7 @@ namespace Dpa.Repository.Implements.Types
             }
 
             FieldInfo[] fieldInfos = t.GetFields(accessBindingFlags);
-            EntityCollection<FieldInfo> l = new EntityCollection<FieldInfo>(fieldInfos.Length);
+            Entity<FieldInfo> l = new Entity<FieldInfo>(fieldInfos.Length);
             foreach (FieldInfo f in fieldInfos)
             {
                 if (f.GetCustomAttribute<NotMappedAttribute>() != null)
@@ -30,7 +30,7 @@ namespace Dpa.Repository.Implements.Types
                     continue;
                 }
 
-                Entity<FieldInfo> e = Entity<FieldInfo>.New(f);
+                Column<FieldInfo> e = Column<FieldInfo>.New(f);
                 if (selector(e))
                 {
                     l.Add(e);
@@ -40,7 +40,7 @@ namespace Dpa.Repository.Implements.Types
             return l;
         }
 
-        internal static EntityCollection<PropertyInfo> GetMappingProperties(this Type t, Func<Entity<PropertyInfo>, bool> selector = null)
+        internal static Entity<PropertyInfo> GetMappingProperties(this Type t, Func<Column<PropertyInfo>, bool> selector = null)
         {
             if (selector is null)
             {
@@ -49,7 +49,7 @@ namespace Dpa.Repository.Implements.Types
 
             PropertyInfo[] props = t.GetProperties(accessBindingFlags);
 
-            EntityCollection<PropertyInfo> l = new EntityCollection<PropertyInfo>(props.Length);
+            Entity<PropertyInfo> l = new Entity<PropertyInfo>(props.Length);
             foreach (PropertyInfo p in props)
             {
                 if (p.GetCustomAttribute<NotMappedAttribute>() != null)
@@ -63,7 +63,7 @@ namespace Dpa.Repository.Implements.Types
                     continue;
                 }
 
-                Entity<PropertyInfo> e = Entity<PropertyInfo>.New(p);
+                Column<PropertyInfo> e = Column<PropertyInfo>.New(p);
                 if (selector(e))
                 {
                     l.Add(e);
@@ -73,14 +73,14 @@ namespace Dpa.Repository.Implements.Types
             return l;
         }
 
-        internal static EntityCollection<ParameterInfo> GetMappingParameters(this MethodInfo m)
+        internal static Entity<ParameterInfo> GetMappingParameters(this MethodInfo m)
         {
             ParameterInfo[] parameterInfos = m.GetParameters();
 
-            EntityCollection<ParameterInfo> l = new EntityCollection<ParameterInfo>(parameterInfos.Length);
+            Entity<ParameterInfo> l = new Entity<ParameterInfo>(parameterInfos.Length);
             foreach (ParameterInfo f in parameterInfos)
             {
-                l.Add(Entity<ParameterInfo>.New(f));
+                l.Add(Column<ParameterInfo>.New(f));
             }
 
             return l;
