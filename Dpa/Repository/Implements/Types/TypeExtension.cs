@@ -9,10 +9,19 @@ namespace Dpa.Repository.Implements.Types
     {
         private const BindingFlags accessBindingFlags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
 
-        internal static EntityCollection<FieldInfo> GetMappingFields(this Type t)
+        private static bool ReturnTrue1<E>(E _)
         {
-            FieldInfo[] fieldInfos = t.GetFields(accessBindingFlags);
+            return true;
+        }
 
+        internal static EntityCollection<FieldInfo> GetMappingFields(this Type t, Func<Entity<FieldInfo>, bool> selector = null)
+        {
+            if (selector is null)
+            {
+                selector = ReturnTrue1;
+            }
+
+            FieldInfo[] fieldInfos = t.GetFields(accessBindingFlags);
             EntityCollection<FieldInfo> l = new EntityCollection<FieldInfo>(fieldInfos.Length);
             foreach (FieldInfo f in fieldInfos)
             {
@@ -21,14 +30,23 @@ namespace Dpa.Repository.Implements.Types
                     continue;
                 }
 
-                l.Add(Entity<FieldInfo>.New(f));
+                Entity<FieldInfo> e = Entity<FieldInfo>.New(f);
+                if (selector(e))
+                {
+                    l.Add(e);
+                }
             }
 
             return l;
         }
 
-        internal static EntityCollection<PropertyInfo> GetMappingProperties(this Type t)
+        internal static EntityCollection<PropertyInfo> GetMappingProperties(this Type t, Func<Entity<PropertyInfo>, bool> selector = null)
         {
+            if (selector is null)
+            {
+                selector = ReturnTrue1;
+            }
+
             PropertyInfo[] props = t.GetProperties(accessBindingFlags);
 
             EntityCollection<PropertyInfo> l = new EntityCollection<PropertyInfo>(props.Length);
@@ -45,7 +63,11 @@ namespace Dpa.Repository.Implements.Types
                     continue;
                 }
 
-                l.Add(Entity<PropertyInfo>.New(p));
+                Entity<PropertyInfo> e = Entity<PropertyInfo>.New(p);
+                if (selector(e))
+                {
+                    l.Add(e);
+                }
             }
 
             return l;

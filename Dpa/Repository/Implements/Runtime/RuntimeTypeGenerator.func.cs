@@ -19,10 +19,10 @@ namespace Dpa.Repository.Implements.Runtime
         ///     } 
         /// }
         /// </summary>
-        public static Func<T, object> CreateFunctionClonePropertyAnonymousEntity<T>()
+        internal static Func<T, object> CreateFunctionClonePropertyAnonymousEntity<T>(Func<Entity<PropertyInfo>, bool> selector = null)
         {
             Type entityType = typeof(T);
-            Type newType = GenerateAnonymousEntityFromEntity(entityType);
+            Type newType = GenerateAnonymousEntityFromEntity(entityType, selector);
             int gen = Interlocked.Increment(ref generateCount);
 
             DynamicMethod m = new DynamicMethod("Fn_clone_propertygenerate_" + gen, newType, new Type[] { entityType }, true);

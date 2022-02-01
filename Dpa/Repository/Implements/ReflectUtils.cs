@@ -8,41 +8,6 @@ using System.Text;
 
 namespace Dpa.Repository
 {
-    internal readonly struct RepositoryColumn
-    {
-        /// <summary>
-        /// C# property
-        /// </summary>
-        public readonly string PropertyName;
-
-        /// <summary>
-        /// db column
-        /// </summary>
-        public readonly string ColumnName;
-
-        public RepositoryColumn(string propertyName, string columnName)
-        {
-            PropertyName = propertyName;
-            ColumnName = columnName;
-        }
-    }
-
-    internal readonly struct RepositoryPropertyNameInfo
-    {
-        public readonly string TableName;
-
-        public readonly List<RepositoryColumn> PrimaryKeyPropertyNames;
-
-        public readonly List<RepositoryColumn> PropertyNames;
-
-        public RepositoryPropertyNameInfo(string tableName, List<RepositoryColumn> primaryKeyPropertyName, List<RepositoryColumn> propertyNames)
-        {
-            TableName = tableName;
-            PrimaryKeyPropertyNames = primaryKeyPropertyName;
-            PropertyNames = propertyNames;
-        }
-    }
-
     internal static class ReflectUtils
     {
         public const BindingFlags TypeMapDefaultBindingFlags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
@@ -92,45 +57,6 @@ namespace Dpa.Repository
             }
 
             return false;
-        }
-
-        public static RepositoryPropertyNameInfo GetRepositoryPropertyInfo(Type objectType)
-        {
-            PropertyInfo[] propertyInfos = objectType.GetProperties();
-            List<RepositoryColumn> primaryKeyPropertyNames = new List<RepositoryColumn>(propertyInfos.Length);
-            List<RepositoryColumn> propertyNames = new List<RepositoryColumn>(propertyInfos.Length);
-            foreach (PropertyInfo propertyInfo in propertyInfos)
-            {
-                NotMappedAttribute notMappedAttr = propertyInfo.GetCustomAttribute<NotMappedAttribute>();
-                if (notMappedAttr != null)
-                {
-                    continue;
-                }
-
-                ColumnAttribute columnAttr = propertyInfo.GetCustomAttribute<ColumnAttribute>();
-                string columnName = propertyInfo.Name;
-                if (columnAttr != null)
-                {
-                    columnName = columnAttr.Name;
-                }
-
-                RepositoryColumn column = new RepositoryColumn(propertyInfo.Name, columnName);
-                propertyNames.Add(column);
-
-                KeyAttribute keyAttr = propertyInfo.GetCustomAttribute<KeyAttribute>();
-                if (keyAttr != null)
-                {
-                    primaryKeyPropertyNames.Add(column);
-                }
-            }
-
-            if (primaryKeyPropertyNames.Count == 0)
-            {
-                throw new Exception("cannot found primarykey in " + objectType.FullName);
-            }
-
-            string tableName = GetTableName(objectType);
-            return new RepositoryPropertyNameInfo(tableName, primaryKeyPropertyNames, propertyNames);
         }
 
         public static string GetFullName(Type type)

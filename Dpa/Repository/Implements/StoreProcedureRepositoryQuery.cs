@@ -50,12 +50,12 @@ namespace Dpa.Repository.Implements
             return $"{tableName}_{op}_dpa_generated";
         }
 
-        private static string MakeStoreProcedureParameter(Dictionary<string, TableType> tableType, List<RepositoryColumn> propertyNames)
+        private static string MakeStoreProcedureParameter(Dictionary<string, TableType> tableType, List<Entity<PropertyInfo>> propertyNames)
         {
             StringBuilder entityProcedureParameter = new StringBuilder(200);
             for (int i = 0; i < propertyNames.Count; ++i)
             {
-                string propertyName = propertyNames[i].PropertyName.ToUpper();
+                string propertyName = propertyNames[i].MemberName.ToUpper();
                 string columnName = propertyNames[i].ColumnName.ToUpper();
                 if (i > 0)
                 {
@@ -73,25 +73,27 @@ namespace Dpa.Repository.Implements
 
         internal async Task EnsureStoreProcedure(DbConnection connection)
         {
-            RepositoryPropertyNameInfo propertyNameInfo = ReflectUtils.GetRepositoryPropertyInfo(typeof(T));
-            Dictionary<string, TableType> tableType = await GetTableType(connection, propertyNameInfo.TableName);
+            EntityCollection<PropertyInfo> props = typeof(T).GetMappingProperties();
+            string tableName = ReflectUtils.GetTableName(typeof(T));
+            Dictionary<string, TableType> tableType = await GetTableType(connection, tableName);
             string idStoreProcedureParameter;
+            List<Entity<PropertyInfo>> pkProps = props.GetPrimaryKeys().ToList();
 
-            if (propertyNameInfo.PrimaryKeyPropertyNames.Count == 1)
+            if (pkProps.Count == 1)
             {
-                string pk = propertyNameInfo.PrimaryKeyPropertyNames[0].ColumnName.ToUpper();
+                string pk = pkProps[0].ColumnName.ToUpper();
                 string idColumnType = tableType[pk].ColumnTypeName;
                 idStoreProcedureParameter = "@id " + idColumnType;
             } 
             else
             {
-                idStoreProcedureParameter = MakeStoreProcedureParameter(tableType, propertyNameInfo.PrimaryKeyPropertyNames);
+                idStoreProcedureParameter = MakeStoreProcedureParameter(tableType, pkProps);
             }
 
-            string entityProcedureParameter = MakeStoreProcedureParameter(tableType, propertyNameInfo.PropertyNames);
+            string entityProcedureParameter = MakeStoreProcedureParameter(tableType, props);
             TextRepositoryQuery<T, ID> textRepositoryQuery = new TextRepositoryQuery<T, ID>();
 
-            string storeProcedureTableName = GetStoreProcedureTableName(propertyNameInfo.TableName);
+            string storeProcedureTableName = GetStoreProcedureTableName(tableName);
 
             await DropAndCreateProcedure(connection, storeProcedureTableName, idStoreProcedureParameter, "select", textRepositoryQuery.Select.query);
             await DropAndCreateProcedure(connection, storeProcedureTableName, entityProcedureParameter, "insert", textRepositoryQuery.Insert.query);
