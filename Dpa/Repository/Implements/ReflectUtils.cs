@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Data;
 using System.Reflection;
 using System.Text;
 
@@ -54,14 +55,18 @@ namespace Dpa.Repository
         public static bool IsDbTypeExists(Type t)
         {
 #pragma warning disable CS0618
-            try
+            // https://github.com/DapperLib/Dapper/blob/b272cc664d933b4b65703d26a79272d549576dff/Dapper/SqlMapper.cs
+            // db 
+            DbType? d = Dapper.SqlMapper.LookupDbType(t, "_", false, out Dapper.SqlMapper.ITypeHandler h);
+            if (d.HasValue && d != DbType.Object)
             {
-                if (Dapper.SqlMapper.LookupDbType(t, "_", true, out Dapper.SqlMapper.ITypeHandler _) != null)
-                {
-                    return true;
-                }
+                return true;
             }
-            catch (System.NotSupportedException) { }
+
+            if (h != null)
+            {
+                return true;
+            }
 
             return false;
 #pragma warning restore CS0618
