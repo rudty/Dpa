@@ -10,6 +10,10 @@ namespace Dpa.Repository.Implements.Types
         {
         }
 
+        internal Entity(IEnumerable<Column<T>> e) : base(e)
+        {
+        }
+
         public IEnumerable<Column<T>> GetPrimaryKeys()
         {
             return this.Where(e => e.IsPrimaryKey);

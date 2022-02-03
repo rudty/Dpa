@@ -42,14 +42,14 @@ namespace Test
 
     public interface IIntRepository
     {
-        [Query("insert into " + TestIntKeyEntity.TableName + " values(@Id, @Value);")]
+        [Query("insert into " + TestIntKeyEntity.TableName + " values(@" + nameof(TestIntKeyEntity.myId) + ", @"+ nameof(TestIntKeyEntity.Value) + ");")]
         Task AddEntity(TestIntKeyEntity entity);
 
-        [Query("insert into " + TestIntKeyEntity.TableName + " values(@Id, '2');")]
+        [Query("insert into " + TestIntKeyEntity.TableName + " values(@" + nameof(TestIntKeyEntity.myId) + ", '2');")]
         Task AddKeyAnd2(TestIntKeyEntity entity);
 
-        [Query("select * from " + TestIntKeyEntity.TableName + " where id = @id;")]
-        Task<TestIntKeyEntity> GetEntity(int id);
+        [Query("select * from " + TestIntKeyEntity.TableName + " where " + nameof(TestIntKeyEntity.myId) + " = @" + nameof(TestIntKeyEntity.myId))]
+        Task<TestIntKeyEntity> GetEntity(int myid);
 
         [Query("#select_me", CommandType.StoredProcedure)]
         Task<TestIntKeyEntity> SelectMe(TestIntKeyEntity entity);
@@ -158,13 +158,13 @@ end";
         public async Task SelectMe()
         {
             var cmd = connection.CreateCommand();
-            cmd.CommandText = @"
+            cmd.CommandText = $@"
 create proc #select_me
-    @id int,
-    @value varchar(500)
+    @{nameof(TestIntKeyEntity.myId)} int,
+    @{nameof(TestIntKeyEntity.Value)} varchar(500)
 as
 begin
-select  @id [Id], @value [myvalue]
+select  @{nameof(TestIntKeyEntity.myId)} [{nameof(TestIntKeyEntity.myId)}], @{nameof(TestIntKeyEntity.Value)} [{nameof(TestIntKeyEntity.Value)}]
 end";
             await cmd.ExecuteNonQueryAsync();
 

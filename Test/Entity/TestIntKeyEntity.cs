@@ -10,12 +10,12 @@ namespace Test.Entity
 
         public const string CreateTableQuery = @"
 create table " + TableName + @"(
-    id int,
+    myid int,
     myvalue varchar(500)
 );";
 
         [System.ComponentModel.DataAnnotations.Key]
-        public int Id { get; set; }
+        public int myId { get; set; }
 
         [System.ComponentModel.DataAnnotations.Schema.Column("myvalue")]
         public string Value { get; set; }
@@ -28,7 +28,7 @@ create table " + TableName + @"(
 
         public TestIntKeyEntity(int id, string value)
         {
-            Id = id;
+            myId = id;
             Value = value;
         }
         
@@ -40,18 +40,18 @@ create table " + TableName + @"(
             }
 
             TestIntKeyEntity otherEntity = obj as TestIntKeyEntity;
-            return otherEntity.Id == Id && otherEntity.Value == Value;
+            return otherEntity.myId == myId && otherEntity.Value == Value;
         }
 
         public override int GetHashCode()
         {
-            return Id;
+            return myId;
         }
         public int CompareTo(TestIntKeyEntity other)
         {
-            if (Id != other.Id)
+            if (myId != other.myId)
             {
-                return Id.CompareTo(other.Id);
+                return myId.CompareTo(other.myId);
             }
 
             return Value.CompareTo(other.Value);

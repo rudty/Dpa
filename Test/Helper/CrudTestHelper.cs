@@ -43,7 +43,7 @@ namespace Test.Helper
             var r1 = await repo.SelectRow(insertId);
             Assert.Equal(insertValue, r1);
 
-            await repo.DeleteRow(insertValue.Id);
+            await repo.DeleteRow(insertValue.myId);
 
             var r2 = await repo.SelectRow(insertId);
             Assert.True(null == r2);
@@ -83,7 +83,7 @@ namespace Test.Helper
 
             await repo.Insert(insertValues);
 
-            var l0 = await SelectValues(repo, insertValues.Select(e => e.Id));
+            var l0 = await SelectValues(repo, insertValues.Select(e => e.myId));
             Assert.Equal(insertValues, l0);
 
             for (int i = 0; i < 100; ++i)
@@ -93,11 +93,11 @@ namespace Test.Helper
 
             await repo.Update(insertValues);
 
-            var l1 = await SelectValues(repo, insertValues.Select(e => e.Id));
+            var l1 = await SelectValues(repo, insertValues.Select(e => e.myId));
             Assert.Equal(insertValues, l1);
 
-            await repo.Delete(insertValues.Select(e => e.Id));
-            var l2 = await SelectValues(repo, insertValues.Select(e => e.Id));
+            await repo.Delete(insertValues.Select(e => e.myId));
+            var l2 = await SelectValues(repo, insertValues.Select(e => e.myId));
             Assert.Empty(l2);
         }
 

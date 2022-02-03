@@ -78,17 +78,9 @@ namespace Dpa.Repository.Implements
             Dictionary<string, TableType> tableType = await GetTableType(connection, tableName);
             string idStoreProcedureParameter;
             List<Column<PropertyInfo>> pkProps = props.GetPrimaryKeys().ToList();
-
-            if (pkProps.Count == 1)
-            {
-                string pk = pkProps[0].ColumnName.ToUpper();
-                string idColumnType = tableType[pk].ColumnTypeName;
-                idStoreProcedureParameter = "@id " + idColumnType;
-            } 
-            else
-            {
-                idStoreProcedureParameter = MakeStoreProcedureParameter(tableType, pkProps);
-            }
+            
+            idStoreProcedureParameter = MakeStoreProcedureParameter(tableType, pkProps);
+            
 
             string entityProcedureParameter = MakeStoreProcedureParameter(tableType, props);
             TextRepositoryQuery<T, ID> textRepositoryQuery = new TextRepositoryQuery<T, ID>();

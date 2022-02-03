@@ -82,7 +82,7 @@ namespace Dpa.Repository.Implements.Runtime
         ///     }
         ///  }
         /// </summary>
-        internal static Type GenerateAnonymousEntityFromParameter(Entity<ParameterInfo> parameters)
+        internal static Type GenerateAnonymousEntityFromParameter<E>(Entity<E> parameters)
         {
             int gen = Interlocked.Increment(ref generateCount);
 

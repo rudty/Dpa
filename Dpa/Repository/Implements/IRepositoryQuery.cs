@@ -17,7 +17,7 @@ namespace Dpa.Repository.Implements
         {
             if (ReflectUtils.IsDbTypeExists(typeof(ID)))
             {
-                return IdBinder;
+                return RuntimeTypeGenerator.CreateFunctionPrimaryKeyAnonymousEntity<T, ID>();
             }
 
             return EntityBinder;

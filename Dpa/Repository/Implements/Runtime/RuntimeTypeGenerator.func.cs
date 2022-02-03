@@ -19,6 +19,31 @@ namespace Dpa.Repository.Implements.Runtime
         ///     } 
         /// }
         /// </summary>
+        internal static Func<ID, object> CreateFunctionPrimaryKeyAnonymousEntity<T, ID>()
+        {
+            Entity<PropertyInfo> entity = typeof(T).GetMappingProperties();
+            Type newType = GenerateAnonymousEntityFromParameter(new Entity<PropertyInfo>(entity.GetPrimaryKeys()));
+            int gen = Interlocked.Increment(ref generateCount);
+
+            DynamicMethod m = new DynamicMethod("Fn_clone_propertygenerate_" + gen, newType, new Type[] { typeof(ID) }, true);
+            ConstructorInfo ctor = newType.GetConstructors()[0];
+
+            var il = m.GetILGenerator();
+            il.Emit(OpCodes.Ldarg_0);
+            il.Emit(OpCodes.Newobj, ctor);
+            il.Emit(OpCodes.Ret);
+
+            Func<ID, object> fn = (Func<ID, object>)m.CreateDelegate(typeof(Func<ID, object>));
+            return fn;
+        }
+
+        /// <summary>
+        /// Func<T, object> fn_generate_1<T>() {
+        ///     return (T entity) => {
+        ///         return new Anonymous_generate_1(entity);
+        ///     } 
+        /// }
+        /// </summary>
         internal static Func<T, object> CreateFunctionClonePropertyAnonymousEntity<T>(Func<Column<PropertyInfo>, bool> selector = null)
         {
             Type entityType = typeof(T);

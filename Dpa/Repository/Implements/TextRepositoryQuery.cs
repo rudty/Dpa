@@ -33,17 +33,12 @@ namespace Dpa.Repository.Implements
 
             Select = new QueryAndParameter<ID>(GetSelectQuery(columns, tableName, cond), idBinder);
             Insert = new QueryAndParameter<T>(GetInsertQuery(columns, tableName, properties), entityBinder);
-            Update = new QueryAndParameter<T>(GetUpdateQuery(tableName, properties), entityBinder);
+            Update = new QueryAndParameter<T>(GetUpdateQuery(tableName, properties, cond), entityBinder);
             Delete = new QueryAndParameter<ID>(GetDeleteQuery(tableName, cond), idBinder);
         }
 
         private static string GetCond(List<Column<PropertyInfo>> primaryKeyProperies)
         {
-            if (primaryKeyProperies.Count == 1)
-            {
-                return $"where {primaryKeyProperies[0].ColumnName} = @id";
-            }
-
             StringBuilder builder = new StringBuilder(100);
             builder.Append("where ");
             for (int i = 0; i < primaryKeyProperies.Count; ++i)
@@ -65,11 +60,10 @@ namespace Dpa.Repository.Implements
             return $"delete from {tableName} {cond};";
         }
 
-        private static string GetUpdateQuery(string tableName, Entity<PropertyInfo> props)
+        private static string GetUpdateQuery(string tableName, Entity<PropertyInfo> props, string cond)
         {
             string updateNames = string.Join(',', props.GetNotPkColumns().Select(p => $"{p.ColumnName}=@{p.MemberName}"));
-            string whereNames = string.Join(" and ", props.GetPrimaryKeys().Select(p => $"{p.ColumnName}=@{p.MemberName}"));
-            return $"update {tableName} set {updateNames} where {whereNames};";
+            return $"update {tableName} set {updateNames} {cond};";
         }
 
         private static string GetInsertQuery(string columns, string tableName, Entity<PropertyInfo> props)

@@ -89,7 +89,7 @@ namespace Test
                 var r1 = await repo.SelectRow(insertId, tran);
                 Assert.Equal(insertValue, r1);
 
-                await repo.DeleteRow(insertValue.Id, tran);
+                await repo.DeleteRow(insertValue.myId, tran);
 
                 var r2 = await repo.SelectRow(insertId, tran);
                 Assert.True(null == r2);
@@ -117,7 +117,7 @@ namespace Test
             Assert.Equal(insertValue, r1);
             using (var tran = await connection.BeginTransactionAsync())
             {
-                await repo.DeleteRow(insertValue.Id, tran);
+                await repo.DeleteRow(insertValue.myId, tran);
                 await tran.RollbackAsync();
             }
             var r2 = await repo.SelectRow(insertId);
