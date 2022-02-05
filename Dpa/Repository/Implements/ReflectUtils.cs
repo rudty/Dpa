@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Dpa.Repository.Implements.Types;
+using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -10,6 +12,27 @@ namespace Dpa.Repository
 {
     internal static class ReflectUtils
     {
+        private static readonly ConcurrentDictionary<Type, bool> registeredTypeMap = new ConcurrentDictionary<Type, bool>();
+
+        public static void SetType(Type type)
+        {
+            if (type.IsPrimitive)
+            {
+                return;
+            }
+
+            if (IsDbTypeExists(type))
+            {
+                return;
+            }
+
+            if (registeredTypeMap.TryAdd(type, true))
+            {
+                TypeMap m = new TypeMap(type);
+                Dapper.SqlMapper.SetTypeMap(type, m);
+            }
+        }
+
         public const BindingFlags TypeMapDefaultBindingFlags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
         private static readonly Type[] supportAttributeTypes = new Type[]
         {

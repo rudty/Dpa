@@ -35,7 +35,7 @@ namespace Dpa.Repository.Implements.Runtime
                     .MakeGenericType(firstGenericArgmentType)
                     .IsAssignableFrom(taskResultType))
                 {
-                    TypeMap.SetType(firstGenericArgmentType);
+                    ReflectUtils.SetType(firstGenericArgmentType);
                     return dapperQueryMethod.MakeGenericMethod(firstGenericArgmentType);
                 }
             }
@@ -45,7 +45,7 @@ namespace Dpa.Repository.Implements.Runtime
                 return dapperQueryMethod_object;
             }
 
-            TypeMap.SetType(taskResultType);
+            ReflectUtils.SetType(taskResultType);
             return dapperQueryFirstMethod.MakeGenericMethod(taskResultType);
         }
 

@@ -10,21 +10,6 @@ namespace Dpa.Repository.Implements.Types
     internal class TypeMap : Dapper.SqlMapper.ITypeMap
     {
         internal const BindingFlags TypeMapDefaultBindingFlags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
-        private static readonly ConcurrentDictionary<Type, bool> registeredTypeMap = new ConcurrentDictionary<Type, bool>();
-
-        public static void SetType(Type type)
-        {
-            if (ReflectUtils.IsDbTypeExists(type))
-            {
-                return;                    
-            }
-
-            if (registeredTypeMap.TryAdd(type, true))
-            {
-                TypeMap m = new TypeMap(type);
-                Dapper.SqlMapper.SetTypeMap(type, m);
-            }
-        }
 
         private readonly Dapper.DefaultTypeMap baseDelegate;
         private readonly Dictionary<ColumnName, FieldAndPropertyMemberMap> columns;

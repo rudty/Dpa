@@ -13,6 +13,10 @@ namespace Dpa.Repository.Implements
         QueryAndParameter<ID> Delete { get; }
         CommandType CommandType { get; }
 
+        /// <summary>
+        /// ID 가 db 타입일때 return new { 아이디: 아이디 };
+        /// ID 가 db 커스텀 클래스일때 return 입력 그대로
+        /// </summary>
         public static Func<ID, object> GetDefaultIdQueryParameterBinder()
         {
             if (ReflectUtils.IsDbTypeExists(typeof(ID)))
@@ -38,11 +42,6 @@ namespace Dpa.Repository.Implements
         private static object EntityBinder<E>(E value)
         {
             return value;
-        }
-
-        private static object IdBinder<E>(E id)
-        {
-            return new { id };
         }
     }
 }
